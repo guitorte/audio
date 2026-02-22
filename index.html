@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guitar Riff MIDI Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0d0d;
+      --surface:   #1a1a1a;
+      --surface2:  #242424;
+      --border:    #333;
+      --accent:    #e85d04;
+      --accent2:   #f48c06;
+      --text:      #e0e0e0;
+      --text-dim:  #888;
+      --success:   #2ecc71;
+      --danger:    #e74c3c;
+      --radius:    8px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+      gap: 1.5rem;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+    }
+    header h1 {
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      width: 100%;
+      max-width: 780px;
+    }
+    .card-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Controls Grid ── */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .control-group label {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    select, input[type="range"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 0.45rem 0.6rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    select:hover, select:focus { border-color: var(--accent); }
+    select option { background: var(--surface2); }
+
+    /* Range slider */
+    input[type="range"] {
+      padding: 0;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--surface2);
+      accent-color: var(--accent);
+      cursor: pointer;
+      margin-top: 0.25rem;
+    }
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .range-row input { flex: 1; }
+    .range-val {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent2);
+      min-width: 2.5rem;
+      text-align: right;
+    }
+
+    /* ── Buttons ── */
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+    button {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.1rem;
+      border-radius: 6px;
+      border: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
+
+    .btn-play {
+      background: var(--success);
+      color: #fff;
+    }
+    .btn-play:hover:not(:disabled) { filter: brightness(1.1); }
+
+    .btn-stop {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn-stop:hover:not(:disabled) { filter: brightness(1.1); }
+
+    .btn-download {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-download:hover:not(:disabled) { border-color: var(--accent); color: var(--accent2); }
+
+    /* ── Piano Roll ── */
+    .piano-roll-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 6px;
+      background: #111;
+      border: 1px solid var(--border);
+    }
+    #pianoRoll {
+      display: block;
+      width: 100%;
+      cursor: default;
+    }
+    .playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: rgba(232, 93, 4, 0.9);
+      pointer-events: none;
+      transition: left 0.05s linear;
+    }
+    #emptyMsg {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-dim);
+      font-size: 0.875rem;
+    }
+
+    /* ── Info bar ── */
+    .info-bar {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+    .info-bar span { display: flex; gap: 0.3rem; align-items: center; }
+    .info-bar strong { color: var(--accent2); }
+
+    /* ── Status ── */
+    #status {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      min-height: 1.2rem;
+    }
+    #status.ok  { color: var(--success); }
+    #status.err { color: var(--danger); }
+
+    /* ── Footer ── */
+    footer {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      text-align: center;
+    }
+    footer a { color: var(--accent2); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>&#127928; Guitar Riff MIDI Generator</h1>
+  <p>Gere riffs de guitarra, ouça no browser e baixe como arquivo MIDI</p>
+</header>
+
+<!-- Controls -->
+<div class="card">
+  <div class="card-title">Configurações</div>
+  <div class="controls-grid">
+
+    <div class="control-group">
+      <label for="selKey">Tonalidade (raiz)</label>
+      <select id="selKey">
+        <option>E</option><option>F</option><option>F#/Gb</option>
+        <option>G</option><option>G#/Ab</option><option selected>A</option>
+        <option>A#/Bb</option><option>B</option><option>C</option>
+        <option>C#/Db</option><option>D</option><option>D#/Eb</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="selScale">Escala</label>
+      <select id="selScale">
+        <option selected>Pentatônica Menor</option>
+        <option>Blues</option>
+        <option>Menor Natural</option>
+        <option>Dórica</option>
+        <option>Mixolídia</option>
+        <option>Pentatônica Maior</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="selStyle">Estilo</label>
+      <select id="selStyle">
+        <option selected>Rock Clássico</option>
+        <option>Blues Shuffle</option>
+        <option>Metal</option>
+        <option>Funk</option>
+        <option>Alternativo</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="selBars">Compassos</label>
+      <select id="selBars">
+        <option value="1">1 compasso</option>
+        <option value="2" selected>2 compassos</option>
+        <option value="4">4 compassos</option>
+        <option value="8">8 compassos</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="selComplexity">Complexidade</label>
+      <select id="selComplexity">
+        <option>Simples</option>
+        <option selected>Médio</option>
+        <option>Complexo</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="rangeBpm">BPM</label>
+      <div class="range-row">
+        <input type="range" id="rangeBpm" min="60" max="200" value="120" />
+        <span class="range-val" id="bpmVal">120</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label for="rangeVelocity">Dinâmica</label>
+      <div class="range-row">
+        <input type="range" id="rangeVelocity" min="40" max="127" value="90" />
+        <span class="range-val" id="velVal">90</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" id="btnGenerate">&#9654; Gerar Riff</button>
+    <button class="btn-play"   id="btnPlay"     disabled>&#9654; Tocar</button>
+    <button class="btn-stop"   id="btnStop"     disabled>&#9632; Parar</button>
+    <button class="btn-download" id="btnDownload" disabled>&#8595; Baixar MIDI</button>
+  </div>
+
+  <div style="margin-top:0.75rem">
+    <p id="status"></p>
+  </div>
+</div>
+
+<!-- Piano Roll -->
+<div class="card">
+  <div class="card-title">Piano Roll</div>
+  <div class="piano-roll-wrap" id="rollWrap">
+    <p id="emptyMsg">Gere um riff para visualizar as notas</p>
+    <canvas id="pianoRoll" style="display:none"></canvas>
+    <div class="playhead" id="playhead" style="display:none; left:0"></div>
+  </div>
+</div>
+
+<!-- Info -->
+<div class="card">
+  <div class="card-title">Informações do Riff</div>
+  <div class="info-bar" id="infoBar">
+    <span>Gere um riff para ver os detalhes</span>
+  </div>
+</div>
+
+<footer>
+  Funciona 100% no browser &mdash; sem servidor.
+  Exporta MIDI compatível com DAWs (GarageBand, REAPER, Ableton, etc.).<br/>
+  <a href="https://github.com" target="_blank">GitHub Pages</a>
+</footer>
+
+<!-- Tone.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════════
+   1. MUSIC THEORY
+═══════════════════════════════════════════════════════ */
+const SCALES = {
+  'Pentatônica Menor': [0, 3, 5, 7, 10],
+  'Blues':             [0, 3, 5, 6, 7, 10],
+  'Menor Natural':     [0, 2, 3, 5, 7, 8, 10],
+  'Dórica':            [0, 2, 3, 5, 7, 9, 10],
+  'Mixolídia':         [0, 2, 4, 5, 7, 9, 10],
+  'Pentatônica Maior': [0, 2, 4, 7, 9],
+};
+
+// MIDI note for root on low-E string area (guitar-range)
+const ROOT_MIDI = {
+  'E':     40,  // E2
+  'F':     41,
+  'F#/Gb': 42,
+  'G':     43,
+  'G#/Ab': 44,
+  'A':     45,  // A2
+  'A#/Bb': 46,
+  'B':     47,
+  'C':     48,
+  'C#/Db': 49,
+  'D':     50,
+  'D#/Eb': 51,
+};
+
+// Style definitions
+const STYLES = {
+  'Rock Clássico': {
+    // 16-step rhythmic template (1=note, 0=rest), 4/4 time
+    rhythm: [1,0,0,0, 1,0,1,0, 0,0,1,0, 1,0,0,0],
+    variation: [1,0,1,0, 0,0,1,0, 0,1,1,0, 0,0,1,0],
+    velBase: 95, velVar: 8,
+    preferRoot: 0.30, preferFifth: 0.18, stepwiseProb: 0.60,
+    octaveRange: [0, 1],   // 0 = root octave, 1 = one higher
+    program: 30,           // Overdriven Guitar (GM)
+    noteLengthFactor: 0.8,
+  },
+  'Blues Shuffle': {
+    rhythm: [1,0,1,0, 0,0,1,0, 0,1,1,0, 1,0,0,0],
+    variation: [1,0,0,1, 0,1,1,0, 0,0,1,1, 0,1,0,0],
+    velBase: 82, velVar: 18,
+    preferRoot: 0.25, preferFifth: 0.20, stepwiseProb: 0.55,
+    octaveRange: [0, 1],
+    program: 28,           // Electric Guitar (clean)
+    swing: true,
+    noteLengthFactor: 0.65,
+  },
+  'Metal': {
+    rhythm: [1,1,0,1, 1,0,1,1, 0,1,1,0, 1,1,0,1],
+    variation: [1,0,1,1, 0,1,0,1, 1,0,1,0, 1,0,1,1],
+    velBase: 112, velVar: 5,
+    preferRoot: 0.40, preferFifth: 0.25, stepwiseProb: 0.65,
+    octaveRange: [0, 0],
+    program: 31,           // Distortion Guitar
+    noteLengthFactor: 0.45,
+  },
+  'Funk': {
+    rhythm: [1,0,0,1, 0,1,0,0, 1,0,0,1, 0,0,1,0],
+    variation: [1,0,1,0, 1,0,0,1, 0,1,0,0, 1,0,1,0],
+    velBase: 88, velVar: 22,
+    preferRoot: 0.20, preferFifth: 0.15, stepwiseProb: 0.40,
+    octaveRange: [0, 2],
+    program: 29,           // Electric Guitar (muted)
+    noteLengthFactor: 0.35,
+  },
+  'Alternativo': {
+    rhythm: [1,0,1,0, 0,1,0,0, 1,0,0,1, 0,1,0,0],
+    variation: [1,0,0,0, 1,1,0,1, 0,0,1,0, 1,0,1,1],
+    velBase: 78, velVar: 20,
+    preferRoot: 0.22, preferFifth: 0.18, stepwiseProb: 0.50,
+    octaveRange: [0, 1],
+    program: 29,
+    noteLengthFactor: 0.70,
+  },
+};
+
+function buildScaleNotes(rootMidi, intervals, octaveRange) {
+  const notes = new Set();
+  const [minOct, maxOct] = octaveRange;
+  for (let oct = minOct; oct <= maxOct + 1; oct++) {
+    for (const iv of intervals) {
+      const n = rootMidi + iv + oct * 12;
+      if (n >= 38 && n <= 78) notes.add(n);  // ~D2 to F#5
+    }
+  }
+  return [...notes].sort((a, b) => a - b);
+}
+
+function chooseNext(curIdx, scale, rootMidi, style) {
+  const r = Math.random();
+  const rootIdxs  = scale.map((n,i) => ({n,i})).filter(({n}) => (n - rootMidi) % 12 === 0);
+  const fifthIdxs = scale.map((n,i) => ({n,i})).filter(({n}) => (n - rootMidi) % 12 === 7);
+  const nearest = (arr) => arr.reduce((a,b) =>
+    Math.abs(a.i - curIdx) <= Math.abs(b.i - curIdx) ? a : b);
+
+  if (r < style.preferRoot && rootIdxs.length)
+    return nearest(rootIdxs).i;
+  if (r < style.preferRoot + style.preferFifth && fifthIdxs.length)
+    return nearest(fifthIdxs).i;
+  if (r < style.preferRoot + style.preferFifth + style.stepwiseProb) {
+    const step = Math.random() < 0.55 ? 1 : -1;
+    return Math.max(0, Math.min(scale.length - 1, curIdx + step));
+  }
+  // Wider jump
+  const span = Math.min(4, Math.floor(scale.length / 2));
+  const mn = Math.max(0, curIdx - span);
+  const mx = Math.min(scale.length - 1, curIdx + span);
+  let idx;
+  do { idx = mn + Math.floor(Math.random() * (mx - mn + 1)); } while (idx === curIdx && mx > mn);
+  return idx;
+}
+
+function getDurationSteps(step, pattern, complexity) {
+  // Find how many consecutive rests follow this note (tied duration)
+  let dur = 1;
+  if (complexity !== 'Complexo') {
+    for (let i = step + 1; i < pattern.length; i++) {
+      if (pattern[i] === 0) dur++;
+      else break;
+    }
+  }
+  return Math.max(1, dur);
+}
+
+function generateRiff({ key, scaleName, style: styleName, bars, complexity, velocityOverride }) {
+  const rootMidi  = ROOT_MIDI[key];
+  const intervals = SCALES[scaleName];
+  const style     = STYLES[styleName];
+  const TICKS_PER_BEAT = 480;
+  const TICKS_16TH     = TICKS_PER_BEAT / 4;
+
+  const scale = buildScaleNotes(rootMidi, intervals, style.octaveRange);
+  if (!scale.length) return [];
+
+  // Start cursor on lowest root note
+  let curIdx = scale.findIndex(n => (n - rootMidi) % 12 === 0);
+  if (curIdx < 0) curIdx = 0;
+
+  const notes = [];
+  const basePattern = style.rhythm;
+  const varPattern  = style.variation;
+
+  // Complexity → density modifier
+  const densityMod = { 'Simples': 0.5, 'Médio': 1.0, 'Complexo': 1.4 }[complexity] ?? 1.0;
+
+  for (let bar = 0; bar < bars; bar++) {
+    // Even bars get base pattern, odd bars (in complex mode) get variation
+    const pat = (complexity === 'Complexo' && bar % 2 === 1) ? varPattern : basePattern;
+
+    for (let step = 0; step < 16; step++) {
+      const shouldPlay = pat[step] === 1 && Math.random() < densityMod;
+      if (!shouldPlay) continue;
+
+      const nextIdx = chooseNext(curIdx, scale, rootMidi, style);
+      const pitch   = scale[nextIdx];
+      const vel     = Math.min(127, Math.max(30,
+        velocityOverride + Math.round((Math.random() - 0.5) * style.velVar * 2)));
+
+      const durSteps = getDurationSteps(step, pat, complexity);
+      const durTicks = Math.max(20, Math.round(durSteps * TICKS_16TH * style.noteLengthFactor));
+
+      // Swing feel: delay even 16th notes slightly if swing is set
+      let startTick = (bar * 16 + step) * TICKS_16TH;
+      if (style.swing && step % 2 === 1) startTick += Math.round(TICKS_16TH * 0.20);
+
+      notes.push({ pitch, velocity: vel, startTick, durationTicks: durTicks });
+      curIdx = nextIdx;
+    }
+  }
+
+  // Add final root note (resolve)
+  const lastTick = notes.length ? Math.max(...notes.map(n => n.startTick + n.durationTicks)) : 0;
+  const rootNote = scale.find(n => (n - rootMidi) % 12 === 0) ?? scale[0];
+  notes.push({ pitch: rootNote, velocity: velocityOverride, startTick: lastTick + TICKS_16TH, durationTicks: TICKS_PER_BEAT * 2 });
+
+  return notes;
+}
+
+/* ═══════════════════════════════════════════════════════
+   2. MIDI WRITER
+═══════════════════════════════════════════════════════ */
+function toVarLen(value) {
+  const bytes = [];
+  bytes.unshift(value & 0x7F);
+  value >>>= 7;
+  while (value > 0) {
+    bytes.unshift((value & 0x7F) | 0x80);
+    value >>>= 7;
+  }
+  return bytes;
+}
+
+function uint32BE(v) { return [(v>>>24)&0xFF,(v>>>16)&0xFF,(v>>>8)&0xFF,v&0xFF]; }
+function uint16BE(v) { return [(v>>>8)&0xFF, v&0xFF]; }
+
+function buildMIDI(notes, bpm, program) {
+  const TICKS = 480;
+  const tempo = Math.round(60_000_000 / bpm);
+
+  // Build event list (absolute ticks)
+  const events = [];
+  for (const n of notes) {
+    events.push({ tick: n.startTick,                  type: 0x90, data: [n.pitch, n.velocity] });
+    events.push({ tick: n.startTick + n.durationTicks, type: 0x80, data: [n.pitch, 0]         });
+  }
+  events.sort((a, b) => a.tick - b.tick || (a.type === 0x80 ? -1 : 1));
+
+  // Track data
+  const td = [];
+  const push = (...bytes) => bytes.forEach(b => td.push(b));
+
+  // Meta: tempo
+  push(0x00, 0xFF, 0x51, 0x03, (tempo>>>16)&0xFF, (tempo>>>8)&0xFF, tempo&0xFF);
+  // Meta: time signature 4/4
+  push(0x00, 0xFF, 0x58, 0x04, 0x04, 0x02, 0x18, 0x08);
+  // Program change
+  push(0x00, 0xC0, program & 0x7F);
+  // Track name
+  const name = Array.from('Guitar Riff', c => c.charCodeAt(0));
+  push(0x00, 0xFF, 0x03, name.length, ...name);
+
+  let lastTick = 0;
+  for (const ev of events) {
+    const delta = ev.tick - lastTick;
+    push(...toVarLen(delta), ev.type, ...ev.data);
+    lastTick = ev.tick;
+  }
+  // End of track
+  push(0x00, 0xFF, 0x2F, 0x00);
+
+  // Assemble chunks
+  const header = [
+    0x4D,0x54,0x68,0x64,   // MThd
+    ...uint32BE(6),         // chunk length
+    ...uint16BE(0),         // format 0
+    ...uint16BE(1),         // 1 track
+    ...uint16BE(TICKS),     // ticks/beat
+  ];
+  const track = [
+    0x4D,0x54,0x72,0x6B,   // MTrk
+    ...uint32BE(td.length), // chunk length
+    ...td,
+  ];
+
+  return new Uint8Array([...header, ...track]);
+}
+
+/* ═══════════════════════════════════════════════════════
+   3. AUDIO PLAYBACK (Tone.js)
+═══════════════════════════════════════════════════════ */
+let synth = null;
+let part  = null;
+
+function initSynth(styleName) {
+  if (synth) { synth.dispose(); synth = null; }
+
+  // Shared effects
+  const reverb = new Tone.Reverb({ decay: 1.2, wet: 0.15 }).toDestination();
+  const chorus  = new Tone.Chorus(3, 2, 0.3).connect(reverb);
+  chorus.start();
+
+  if (styleName === 'Metal' || styleName === 'Rock Clássico') {
+    const dist = new Tone.Distortion(styleName === 'Metal' ? 0.7 : 0.4).connect(chorus);
+    synth = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'sawtooth' },
+      envelope: { attack: 0.004, decay: 0.08, sustain: 0.4, release: 0.6 },
+    }).connect(dist);
+  } else if (styleName === 'Funk') {
+    const filter = new Tone.AutoFilter({ frequency: '8n', depth: 0.8 }).connect(chorus);
+    filter.start();
+    synth = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.002, decay: 0.05, sustain: 0.1, release: 0.2 },
+    }).connect(filter);
+  } else {
+    synth = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.005, decay: 0.15, sustain: 0.5, release: 0.9 },
+    }).connect(chorus);
+  }
+  synth.volume.value = -6;
+}
+
+function midiNoteToFreq(midi) {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+function scheduleTone(notes, bpm, styleName, onDone) {
+  Tone.Transport.stop();
+  Tone.Transport.cancel();
+  if (part) { part.dispose(); part = null; }
+
+  initSynth(styleName);
+  Tone.Transport.bpm.value = bpm;
+
+  const TICKS = 480;
+  const secPerTick = 60 / (bpm * TICKS);
+  const toneNotes = notes.map(n => ({
+    time: n.startTick * secPerTick,
+    freq: midiNoteToFreq(n.pitch),
+    dur:  Math.max(0.02, n.durationTicks * secPerTick),
+    vel:  n.velocity / 127,
+  }));
+
+  const totalDur = Math.max(...toneNotes.map(n => n.time + n.dur)) + 0.5;
+
+  part = new Tone.Part((time, ev) => {
+    synth.triggerAttackRelease(ev.freq, ev.dur, time, ev.vel);
+  }, toneNotes);
+  part.start(0);
+  Tone.Transport.start();
+  setTimeout(() => { Tone.Transport.stop(); onDone(); }, totalDur * 1000 + 200);
+}
+
+/* ═══════════════════════════════════════════════════════
+   4. PIANO ROLL RENDERER
+═══════════════════════════════════════════════════════ */
+function renderPianoRoll(notes, bpm) {
+  const canvas = document.getElementById('pianoRoll');
+  const ctx    = canvas.getContext('2d');
+
+  if (!notes.length) return;
+
+  // Compute range
+  const pitches = notes.map(n => n.pitch);
+  const minP = Math.min(...pitches) - 2;
+  const maxP = Math.max(...pitches) + 2;
+  const pitchSpan = maxP - minP;
+
+  const maxTick  = Math.max(...notes.map(n => n.startTick + n.durationTicks)) + 480;
+  const W        = canvas.offsetWidth || 700;
+  const H        = Math.max(120, pitchSpan * 14);
+  canvas.width   = W;
+  canvas.height  = H;
+  canvas.style.height = H + 'px';
+
+  // Background lanes
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, W, H);
+
+  const rowH  = H / pitchSpan;
+  const tickW = W / maxTick;
+
+  // Grid lines (beats)
+  const TICKS_BEAT = 480;
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  for (let t = 0; t < maxTick; t += TICKS_BEAT) {
+    const x = t * tickW;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  // Darker lines every 4 beats (bar)
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  for (let t = 0; t < maxTick; t += TICKS_BEAT * 4) {
+    const x = t * tickW;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+
+  // Notes
+  for (const n of notes) {
+    const x = n.startTick * tickW;
+    const w = Math.max(2, n.durationTicks * tickW - 1);
+    const y = (maxP - n.pitch) * rowH;
+    const h = Math.max(3, rowH - 1);
+
+    // Color by velocity
+    const bright = 0.5 + (n.velocity / 127) * 0.5;
+    ctx.fillStyle = `hsl(25, 90%, ${Math.round(bright * 60)}%)`;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 2);
+    ctx.fill();
+
+    // Velocity sheen
+    ctx.fillStyle = `rgba(255,255,255,${bright * 0.2})`;
+    ctx.fillRect(x + 1, y + 1, w - 2, h * 0.35);
+  }
+
+  // Pitch labels on left edge
+  ctx.font = '9px monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  for (let p = minP; p <= maxP; p++) {
+    if (p % 12 === 0 || NOTE_NAMES[p % 12] === 'A') {
+      const label = NOTE_NAMES[((p % 12) + 12) % 12] + Math.floor(p / 12 - 1);
+      const y = (maxP - p) * rowH + rowH * 0.75;
+      ctx.fillText(label, 3, y);
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   5. UI CONTROLLER
+═══════════════════════════════════════════════════════ */
+let currentNotes  = null;
+let currentMIDI   = null;
+let isPlaying     = false;
+let playheadTimer = null;
+
+const $ = id => document.getElementById(id);
+
+function setStatus(msg, cls = '') {
+  const el = $('status');
+  el.textContent = msg;
+  el.className = cls;
+}
+
+function updateInfoBar(notes, bpm, key, scaleName, styleName, bars) {
+  const totalSec = notes.length
+    ? (Math.max(...notes.map(n => n.startTick + n.durationTicks)) / 480 / bpm * 60).toFixed(1)
+    : 0;
+  const unique = new Set(notes.map(n => n.pitch)).size;
+  $('infoBar').innerHTML = `
+    <span>Tom: <strong>${key}</strong></span>
+    <span>Escala: <strong>${scaleName}</strong></span>
+    <span>Estilo: <strong>${styleName}</strong></span>
+    <span>BPM: <strong>${bpm}</strong></span>
+    <span>Compassos: <strong>${bars}</strong></span>
+    <span>Notas: <strong>${notes.length}</strong></span>
+    <span>Notas únicas: <strong>${unique}</strong></span>
+    <span>Duração: <strong>~${totalSec}s</strong></span>
+  `;
+}
+
+function onGenerate() {
+  const key             = $('selKey').value;
+  const scaleName       = $('selScale').value;
+  const styleName       = $('selStyle').value;
+  const bars            = parseInt($('selBars').value);
+  const complexity      = $('selComplexity').value;
+  const bpm             = parseInt($('rangeBpm').value);
+  const velocityOverride= parseInt($('rangeVelocity').value);
+
+  setStatus('Gerando riff...', '');
+  const notes = generateRiff({ key, scaleName, style: styleName, bars, complexity, velocityOverride });
+
+  if (!notes.length) {
+    setStatus('Nao foi possível gerar notas. Tente outra configuração.', 'err');
+    return;
+  }
+
+  currentNotes = notes;
+  currentMIDI  = buildMIDI(notes, bpm, STYLES[styleName].program);
+
+  // Show piano roll
+  $('emptyMsg').style.display  = 'none';
+  $('pianoRoll').style.display = 'block';
+  renderPianoRoll(notes, bpm);
+
+  $('btnPlay').disabled     = false;
+  $('btnDownload').disabled = false;
+  updateInfoBar(notes, bpm, key, scaleName, styleName, bars);
+  setStatus(`Riff gerado com ${notes.length} notas!`, 'ok');
+}
+
+async function onPlay() {
+  if (isPlaying) return;
+  await Tone.start();
+
+  const bpm     = parseInt($('rangeBpm').value);
+  const styleName = $('selStyle').value;
+
+  isPlaying = true;
+  $('btnPlay').disabled = true;
+  $('btnStop').disabled = false;
+  setStatus('Tocando...', '');
+
+  // Animate playhead
+  const canvas  = $('pianoRoll');
+  const maxTick = Math.max(...currentNotes.map(n => n.startTick + n.durationTicks)) + 480;
+  const totalMs = (maxTick / 480 / bpm * 60 * 1000) + 300;
+  const startTime = Date.now();
+  $('playhead').style.display = 'block';
+
+  playheadTimer = setInterval(() => {
+    const elapsed = Date.now() - startTime;
+    const frac = Math.min(1, elapsed / totalMs);
+    $('playhead').style.left = (frac * canvas.offsetWidth) + 'px';
+  }, 50);
+
+  scheduleTone(currentNotes, bpm, styleName, () => {
+    stopPlayback();
+  });
+}
+
+function stopPlayback() {
+  isPlaying = false;
+  Tone.Transport.stop();
+  if (part) { part.dispose(); part = null; }
+  clearInterval(playheadTimer);
+  $('playhead').style.display = 'none';
+  $('btnPlay').disabled = false;
+  $('btnStop').disabled = true;
+  setStatus('');
+}
+
+function onStop() { stopPlayback(); }
+
+function onDownload() {
+  if (!currentMIDI) return;
+  const key      = $('selKey').value.replace('/', '_');
+  const scaleName= $('selScale').value.replace(/\s+/g, '-');
+  const bpm      = $('rangeBpm').value;
+  const blob     = new Blob([currentMIDI], { type: 'audio/midi' });
+  const url      = URL.createObjectURL(blob);
+  const a        = document.createElement('a');
+  a.href         = url;
+  a.download     = `riff_${key}_${scaleName}_${bpm}bpm.mid`;
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus('Arquivo MIDI baixado!', 'ok');
+}
+
+// BPM / Velocity display
+$('rangeBpm').addEventListener('input', e => { $('bpmVal').textContent = e.target.value; });
+$('rangeVelocity').addEventListener('input', e => { $('velVal').textContent = e.target.value; });
+
+$('btnGenerate').addEventListener('click', onGenerate);
+$('btnPlay').addEventListener('click', onPlay);
+$('btnStop').addEventListener('click', onStop);
+$('btnDownload').addEventListener('click', onDownload);
+
+// Re-render piano roll on resize
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (currentNotes) renderPianoRoll(currentNotes, parseInt($('rangeBpm').value));
+  }, 200);
+});
+</script>
+</body>
+</html>
