@@ -19,7 +19,6 @@
       --text-dim:  #888;
       --success:   #2ecc71;
       --danger:    #e74c3c;
-      --info:      #3498db;
       --radius:    8px;
     }
 
@@ -54,7 +53,7 @@
       border-radius: var(--radius);
       padding: 1.1rem;
       width: 100%;
-      max-width: 820px;
+      max-width: 860px;
     }
     .card-title {
       font-size: 0.68rem;
@@ -68,18 +67,12 @@
     /* ── Controls Grid ── */
     .controls-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 0.8rem;
     }
-    .control-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
+    .control-group { display: flex; flex-direction: column; gap: 0.25rem; }
     .control-group label, .section-label {
-      font-size: 0.72rem;
-      color: var(--text-dim);
-      font-weight: 500;
+      font-size: 0.72rem; color: var(--text-dim); font-weight: 500;
     }
     select, input[type="range"] {
       width: 100%;
@@ -104,8 +97,8 @@
     .range-row { display: flex; align-items: center; gap: 0.4rem; }
     .range-row input { flex: 1; }
     .range-val {
-      font-size: 0.78rem; font-weight: 600;
-      color: var(--accent2); min-width: 2.2rem; text-align: right;
+      font-size: 0.78rem; font-weight: 600; color: var(--accent2);
+      min-width: 2.6rem; text-align: right;
     }
 
     /* ── Buttons ── */
@@ -131,7 +124,15 @@
     .btn-danger-outline { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
     .btn-danger-outline:hover:not(:disabled) { background: var(--danger); color: #fff; }
 
-    /* ── Section cards ── */
+    /* ── Instrument badge ── */
+    .instr-badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      font-size: 0.7rem; color: var(--accent2);
+      background: rgba(232,93,4,0.12); border: 1px solid rgba(232,93,4,0.25);
+      border-radius: 3px; padding: 0.1rem 0.4rem;
+    }
+
+    /* ── Section Cards ── */
     .section-card {
       background: var(--surface2);
       border: 1px solid var(--border);
@@ -140,50 +141,33 @@
       margin-bottom: 0.6rem;
     }
     .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 0.6rem;
     }
-    .section-name {
-      font-weight: 700;
-      font-size: 1rem;
-      color: var(--accent2);
-    }
+    .section-name { font-weight: 700; font-size: 1rem; color: var(--accent2); }
     .section-controls-row {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
       gap: 0.6rem;
       margin-bottom: 0.6rem;
     }
-    .section-toggles {
-      display: flex; gap: 0.8rem; margin-bottom: 0.6rem; flex-wrap: wrap;
-    }
+    .section-toggles { display: flex; gap: 0.8rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
     .toggle-label {
       display: flex; align-items: center; gap: 0.3rem;
-      font-size: 0.75rem; color: var(--text-dim); cursor: pointer;
-      user-select: none;
+      font-size: 0.75rem; color: var(--text-dim); cursor: pointer; user-select: none;
     }
-    .toggle-label input[type="checkbox"] {
-      width: auto; height: auto; accent-color: var(--accent);
-      cursor: pointer;
-    }
+    .toggle-label input[type="checkbox"] { width: auto; height: auto; accent-color: var(--accent); }
 
     /* ── Rhythm Grid ── */
-    .rhythm-grid {
-      display: flex;
-      gap: 4px;
-      flex-wrap: wrap;
-    }
+    .rhythm-grid { display: flex; gap: 4px; flex-wrap: wrap; }
     .beat-group {
-      display: flex;
-      gap: 2px;
-      border-right: 1px solid rgba(255,255,255,0.06);
+      display: flex; gap: 2px;
+      border-right: 1px solid rgba(255,255,255,0.07);
       padding-right: 3px;
     }
     .beat-group:last-child { border-right: none; padding-right: 0; }
     .grid-cell {
-      width: 26px; height: 26px;
+      height: 26px;
       border-radius: 3px;
       background: var(--surface3);
       border: 1px solid rgba(255,255,255,0.08);
@@ -196,77 +180,55 @@
       border-color: var(--accent2);
       box-shadow: 0 0 6px rgba(232,93,4,0.3);
     }
+    /* subdivision-specific widths */
+    .sub-8th    .grid-cell { width: 34px; }
+    .sub-16th   .grid-cell { width: 26px; }
+    .sub-32nd   .grid-cell { width: 15px; height: 22px; border-radius: 2px; }
+    .sub-triplet .grid-cell { width: 30px; }
 
-    /* ── Chord Progression Editor ── */
-    .progression-row {
-      display: flex; gap: 0.4rem; flex-wrap: wrap;
-      align-items: center; margin-top: 0.4rem;
-    }
-    .progression-row select {
-      width: auto; min-width: 60px; padding: 0.3rem 0.4rem; font-size: 0.78rem;
-    }
+    /* ── Chord Progression ── */
+    .progression-row { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-top: 0.4rem; }
+    .progression-row select { width: auto; min-width: 58px; padding: 0.3rem 0.35rem; font-size: 0.76rem; }
 
-    /* ── Arrangement Editor ── */
-    .arrangement-chips {
-      display: flex; gap: 0.35rem; flex-wrap: wrap;
-      align-items: center; margin-bottom: 0.6rem;
-      min-height: 32px;
-    }
+    /* ── Arrangement ── */
+    .arrangement-chips { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.6rem; min-height: 32px; }
     .arr-chip {
       display: inline-flex; align-items: center; gap: 0.25rem;
       background: var(--surface3); border: 1px solid var(--border);
       border-radius: 4px; padding: 0.25rem 0.5rem;
       font-size: 0.8rem; font-weight: 600; color: var(--accent2);
-      cursor: default;
     }
-    .arr-chip .arr-remove {
-      cursor: pointer; opacity: 0.5; font-size: 0.9rem;
-      line-height: 1; margin-left: 0.1rem;
-    }
+    .arr-chip .arr-remove { cursor: pointer; opacity: 0.5; font-size: 0.9rem; line-height: 1; }
     .arr-chip .arr-remove:hover { opacity: 1; color: var(--danger); }
     .add-arr-btns { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
 
     /* ── Presets ── */
     .preset-row {
-      display: flex; gap: 0.4rem; flex-wrap: wrap;
-      align-items: center; margin-top: 0.5rem;
-      padding-top: 0.5rem;
-      border-top: 1px solid var(--border);
+      display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
+      margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border);
     }
     .preset-row span { font-size: 0.72rem; color: var(--text-dim); margin-right: 0.2rem; }
 
     /* ── Piano Roll ── */
     .piano-roll-wrap {
-      position: relative; overflow: hidden;
-      border-radius: 6px; background: #111;
-      border: 1px solid var(--border);
+      position: relative; overflow: hidden; border-radius: 6px;
+      background: #111; border: 1px solid var(--border);
     }
     #pianoRoll { display: block; width: 100%; cursor: default; }
     .playhead {
       position: absolute; top: 0; bottom: 0; width: 2px;
       background: rgba(232,93,4,0.9); pointer-events: none;
-      transition: left 0.05s linear;
     }
-    #emptyMsg {
-      text-align: center; padding: 2.5rem 1rem;
-      color: var(--text-dim); font-size: 0.82rem;
-    }
+    #emptyMsg { text-align: center; padding: 2.5rem 1rem; color: var(--text-dim); font-size: 0.82rem; }
 
-    .info-bar {
-      display: flex; gap: 1.2rem; flex-wrap: wrap;
-      font-size: 0.75rem; color: var(--text-dim);
-    }
-    .info-bar span { display: flex; gap: 0.25rem; align-items: center; }
+    .info-bar { display: flex; gap: 1.2rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--text-dim); }
     .info-bar strong { color: var(--accent2); }
 
-    .section-markers {
-      display: flex; gap: 0; font-size: 0.65rem;
-      margin-top: 0.3rem;
-    }
+    .section-markers { display: flex; gap: 0; font-size: 0.65rem; margin-top: 0.3rem; }
     .section-marker {
-      text-align: center; padding: 0.15rem 0;
+      text-align: center; padding: 0.15rem 0; overflow: hidden;
       border: 1px solid var(--border); border-radius: 3px;
-      color: var(--text-dim); font-weight: 600;
+      color: var(--text-dim); font-weight: 600; white-space: nowrap;
     }
 
     #status { font-size: 0.78rem; color: var(--text-dim); min-height: 1.1rem; }
@@ -274,10 +236,8 @@
     #status.err { color: var(--danger); }
 
     footer { font-size: 0.7rem; color: var(--text-dim); text-align: center; }
-    footer a { color: var(--accent2); text-decoration: none; }
 
     @media (max-width: 500px) {
-      .grid-cell { width: 22px; height: 22px; }
       .controls-grid { grid-template-columns: 1fr 1fr; }
       .section-controls-row { grid-template-columns: 1fr 1fr; }
     }
@@ -287,7 +247,7 @@
 
 <header>
   <h1>&#127928; Guitar Riff MIDI Generator</h1>
-  <p>Crie riffs multi-seção, com power chords e progressões &mdash; ouça e baixe MIDI</p>
+  <p>Instrumento, subdivisão, seções e arranjo customizáveis &mdash; escute e baixe MIDI</p>
 </header>
 
 <!-- Global Settings -->
@@ -315,6 +275,21 @@
       </select>
     </div>
     <div class="control-group">
+      <label for="selInstrument">Instrumento / Textura</label>
+      <select id="selInstrument">
+        <option>Guitarra Limpa</option>
+        <option>Guitarra Chorus</option>
+        <option>Overdrive</option>
+        <option selected>Rock</option>
+        <option>Metal</option>
+        <option>Blues</option>
+        <option>Funk (Wah)</option>
+        <option>Bass Elétrico</option>
+        <option>Synth Lead</option>
+        <option>Synth Pad</option>
+      </select>
+    </div>
+    <div class="control-group">
       <label for="rangeBpm">BPM</label>
       <div class="range-row">
         <input type="range" id="rangeBpm" min="60" max="220" value="120" />
@@ -326,6 +301,13 @@
       <div class="range-row">
         <input type="range" id="rangeVelocity" min="40" max="127" value="95" />
         <span class="range-val" id="velVal">95</span>
+      </div>
+    </div>
+    <div class="control-group">
+      <label for="rangeReverb">Reverb</label>
+      <div class="range-row">
+        <input type="range" id="rangeReverb" min="0" max="60" value="15" />
+        <span class="range-val" id="reverbVal">15%</span>
       </div>
     </div>
   </div>
@@ -378,14 +360,10 @@
 <!-- Info -->
 <div class="card">
   <div class="card-title">Informações</div>
-  <div class="info-bar" id="infoBar">
-    <span>Gere um riff para ver os detalhes</span>
-  </div>
+  <div class="info-bar" id="infoBar"><span>Gere um riff para ver os detalhes</span></div>
 </div>
 
-<footer>
-  100% client-side &mdash; sem servidor. Compatível com GarageBand, REAPER, Ableton, FL Studio.
-</footer>
+<footer>100% client-side &mdash; sem servidor. Compatível com GarageBand, REAPER, Ableton, FL Studio.</footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
 
@@ -415,40 +393,114 @@ const CHORD_DEGREES = {
 };
 const DEGREE_NAMES = Object.keys(CHORD_DEGREES);
 
-const STYLE_DEFS = {
-  'Rock Clássico': {
-    velVar: 8, octaveRange: [0, 1], program: 30,
-    noteLengthFactor: 0.8, preferRoot: 0.30, preferFifth: 0.18, stepwiseProb: 0.60,
+/* Subdivisions: stepsPerBar, ticksPerStep, cellsPerBeat, cssClass */
+const TICKS_PER_BEAT = 480;
+const TICKS_PER_BAR  = TICKS_PER_BEAT * 4;
+
+const SUBDIVISIONS = {
+  '8th':     { stepsPerBar: 8,  ticksPerStep: 240, cellsPerBeat: 2, cssClass: 'sub-8th',     label: 'Colcheia (8ª)' },
+  '16th':    { stepsPerBar: 16, ticksPerStep: 120, cellsPerBeat: 4, cssClass: 'sub-16th',    label: 'Semicolcheia (16ª)' },
+  '32nd':    { stepsPerBar: 32, ticksPerStep: 60,  cellsPerBeat: 8, cssClass: 'sub-32nd',    label: 'Fusa (32ª)' },
+  'triplet': { stepsPerBar: 12, ticksPerStep: 160, cellsPerBeat: 3, cssClass: 'sub-triplet', label: 'Tercina (8ª)' },
+};
+
+/* Instrument definitions: every field drives Tone.js synth construction.
+   No randomness — exactly what you pick is what you hear. */
+const INSTRUMENT_DEFS = {
+  'Guitarra Limpa': {
+    midiProgram: 25, oscType: 'triangle', distAmount: 0,
+    chorusDepth: 0.12, chorusFreq: 2.0, filterFreq: null,
+    env: { attack: 0.006, decay: 0.20, sustain: 0.50, release: 1.2 }, volume: -4,
   },
-  'Blues Shuffle': {
-    velVar: 18, octaveRange: [0, 1], program: 28,
-    noteLengthFactor: 0.65, swing: true, preferRoot: 0.25, preferFifth: 0.20, stepwiseProb: 0.55,
+  'Guitarra Chorus': {
+    midiProgram: 26, oscType: 'triangle', distAmount: 0,
+    chorusDepth: 0.55, chorusFreq: 3.5, filterFreq: null,
+    env: { attack: 0.010, decay: 0.25, sustain: 0.55, release: 1.5 }, volume: -5,
+  },
+  'Overdrive': {
+    midiProgram: 29, oscType: 'sawtooth', distAmount: 0.30,
+    chorusDepth: 0.08, chorusFreq: 1.5, filterFreq: null,
+    env: { attack: 0.004, decay: 0.12, sustain: 0.45, release: 0.8 }, volume: -7,
+  },
+  'Rock': {
+    midiProgram: 30, oscType: 'sawtooth', distAmount: 0.52,
+    chorusDepth: 0.06, chorusFreq: 1.5, filterFreq: null,
+    env: { attack: 0.003, decay: 0.08, sustain: 0.40, release: 0.6 }, volume: -6,
   },
   'Metal': {
-    velVar: 5, octaveRange: [0, 0], program: 31,
-    noteLengthFactor: 0.45, preferRoot: 0.40, preferFifth: 0.25, stepwiseProb: 0.65,
+    midiProgram: 31, oscType: 'sawtooth', distAmount: 0.80,
+    chorusDepth: 0.03, chorusFreq: 1.0, filterFreq: null,
+    env: { attack: 0.002, decay: 0.05, sustain: 0.35, release: 0.4 }, volume: -5,
   },
-  'Funk': {
-    velVar: 22, octaveRange: [0, 2], program: 29,
-    noteLengthFactor: 0.35, preferRoot: 0.20, preferFifth: 0.15, stepwiseProb: 0.40,
+  'Blues': {
+    midiProgram: 28, oscType: 'triangle', distAmount: 0.22,
+    chorusDepth: 0.10, chorusFreq: 1.5, filterFreq: null,
+    env: { attack: 0.008, decay: 0.20, sustain: 0.55, release: 1.0 }, volume: -5,
   },
-  'Alternativo': {
-    velVar: 20, octaveRange: [0, 1], program: 29,
-    noteLengthFactor: 0.70, preferRoot: 0.22, preferFifth: 0.18, stepwiseProb: 0.50,
+  'Funk (Wah)': {
+    midiProgram: 29, oscType: 'triangle', distAmount: 0.08,
+    chorusDepth: 0.04, chorusFreq: 1.0, filterFreq: 900,
+    env: { attack: 0.002, decay: 0.06, sustain: 0.10, release: 0.2 }, volume: -4,
+  },
+  'Bass Elétrico': {
+    midiProgram: 33, oscType: 'sine', distAmount: 0.04,
+    chorusDepth: 0.0,  chorusFreq: 1.0, filterFreq: 650,
+    env: { attack: 0.010, decay: 0.15, sustain: 0.60, release: 0.4 }, volume: -2,
+  },
+  'Synth Lead': {
+    midiProgram: 80, oscType: 'square', distAmount: 0.12,
+    chorusDepth: 0.28, chorusFreq: 4.0, filterFreq: null,
+    env: { attack: 0.015, decay: 0.10, sustain: 0.50, release: 1.0 }, volume: -8,
+  },
+  'Synth Pad': {
+    midiProgram: 89, oscType: 'sine', distAmount: 0.0,
+    chorusDepth: 0.50, chorusFreq: 0.8, filterFreq: null,
+    env: { attack: 0.30,  decay: 0.50, sustain: 0.70, release: 2.0 }, volume: -7,
   },
 };
 
-const DEFAULT_RHYTHMS = {
-  'Rock Clássico':  [1,0,0,0, 1,0,1,0, 0,0,1,0, 1,0,0,0],
-  'Blues Shuffle':   [1,0,1,0, 0,0,1,0, 0,1,1,0, 1,0,0,0],
-  'Metal':           [1,1,0,1, 1,0,1,1, 0,1,1,0, 1,1,0,1],
-  'Funk':            [1,0,0,1, 0,1,0,0, 1,0,0,1, 0,0,1,0],
-  'Alternativo':     [1,0,1,0, 0,1,0,0, 1,0,0,1, 0,1,0,0],
+/* Style definitions: control musical pattern generation, NOT sound */
+const STYLE_DEFS = {
+  'Rock Clássico': { velVar: 8,  octaveRange: [0,1], noteLengthFactor: 0.8, swing: false, preferRoot: 0.30, preferFifth: 0.18, stepwiseProb: 0.60 },
+  'Blues Shuffle':  { velVar: 18, octaveRange: [0,1], noteLengthFactor: 0.65, swing: true,  preferRoot: 0.25, preferFifth: 0.20, stepwiseProb: 0.55 },
+  'Metal':          { velVar: 5,  octaveRange: [0,0], noteLengthFactor: 0.45, swing: false, preferRoot: 0.40, preferFifth: 0.25, stepwiseProb: 0.65 },
+  'Funk':           { velVar: 22, octaveRange: [0,2], noteLengthFactor: 0.35, swing: false, preferRoot: 0.20, preferFifth: 0.15, stepwiseProb: 0.40 },
+  'Alternativo':    { velVar: 20, octaveRange: [0,1], noteLengthFactor: 0.70, swing: false, preferRoot: 0.22, preferFifth: 0.18, stepwiseProb: 0.50 },
 };
 
-const TICKS_PER_BEAT = 480;
-const TICKS_16TH = TICKS_PER_BEAT / 4;
-const TICKS_PER_BAR = TICKS_PER_BEAT * 4;
+/* Default rhythm patterns per style per subdivision */
+const RHYTHMS = {
+  '16th': {
+    'Rock Clássico': [1,0,0,0, 1,0,1,0, 0,0,1,0, 1,0,0,0],
+    'Blues Shuffle':  [1,0,1,0, 0,0,1,0, 0,1,1,0, 1,0,0,0],
+    'Metal':          [1,1,0,1, 1,0,1,1, 0,1,1,0, 1,1,0,1],
+    'Funk':           [1,0,0,1, 0,1,0,0, 1,0,0,1, 0,0,1,0],
+    'Alternativo':    [1,0,1,0, 0,1,0,0, 1,0,0,1, 0,1,0,0],
+  },
+  '8th': {
+    'Rock Clássico': [1,0, 1,1, 0,1, 1,0],
+    'Blues Shuffle':  [1,1, 0,1, 1,0, 1,1],
+    'Metal':          [1,1, 1,1, 1,1, 1,1],
+    'Funk':           [1,0, 0,1, 0,1, 0,0],
+    'Alternativo':    [1,0, 1,0, 0,1, 0,1],
+  },
+  'triplet': {
+    'Rock Clássico': [1,0,0, 1,0,0, 1,0,0, 1,0,0],
+    'Blues Shuffle':  [1,0,1, 0,0,1, 1,0,0, 1,0,1],
+    'Metal':          [1,1,0, 1,1,0, 1,1,0, 1,1,0],
+    'Funk':           [1,0,0, 0,1,0, 0,0,1, 1,0,0],
+    'Alternativo':    [1,0,0, 1,0,1, 0,0,1, 0,0,1],
+  },
+};
+
+function getDefaultRhythm(style, subdivision) {
+  if (subdivision === '32nd') {
+    const base = RHYTHMS['16th'][style] || RHYTHMS['16th']['Rock Clássico'];
+    return base.flatMap(b => [b, 0]);
+  }
+  const table = RHYTHMS[subdivision] || RHYTHMS['16th'];
+  return [...(table[style] || table['Rock Clássico'])];
+}
 
 /* ═══════════════════════════════════════════════════════
    STATE
@@ -456,18 +508,22 @@ const TICKS_PER_BAR = TICKS_PER_BEAT * 4;
 let sectionIdCounter = 0;
 
 function createSection(name, overrides = {}) {
+  const style = overrides.style || 'Rock Clássico';
+  const subdivision = overrides.subdivision || '16th';
   return {
     id: sectionIdCounter++,
     name,
     bars: 2,
-    style: 'Rock Clássico',
+    style,
     complexity: 'Médio',
+    subdivision,
     powerChords: false,
     palmMute: false,
-    noteMode: 'random',          // 'random' | 'progression' | 'motif'
+    noteMode: 'random',
     chordProgression: ['I', 'bVII', 'IV', 'I'],
-    rhythm: [...DEFAULT_RHYTHMS['Rock Clássico']],
+    rhythm: getDefaultRhythm(style, subdivision),
     ...overrides,
+    // rhythm is recomputed from style+subdivision if not explicitly given
   };
 }
 
@@ -480,13 +536,82 @@ let currentNotes = null;
 let currentMIDI  = null;
 let isPlaying    = false;
 let playheadTimer = null;
-let synth = null;
+
+let synthState = null; // { poly, nodes: Tone.AudioNode[] }
 let part  = null;
 
 const $ = id => document.getElementById(id);
 
 /* ═══════════════════════════════════════════════════════
-   MUSIC THEORY & GENERATION
+   SYNTH — deterministic, no randomness
+═══════════════════════════════════════════════════════ */
+function disposeSynth() {
+  if (part) { try { part.dispose(); } catch(e) {} part = null; }
+  if (synthState) {
+    try { synthState.poly.dispose(); } catch(e) {}
+    synthState.nodes.forEach(n => { try { n.dispose(); } catch(e) {} });
+    synthState = null;
+  }
+}
+
+/**
+ * Build a Tone.js signal chain for the given instrument.
+ * Uses JCReverb (fully synchronous) — avoids the async IR-generation
+ * problem that caused silent playback with Tone.Reverb.
+ *
+ * Chain: PolySynth → [Distortion] → Chorus → [Filter] → JCReverb → Destination
+ */
+function buildSynth(instrumentName, reverbWet) {
+  disposeSynth();
+  const def = INSTRUMENT_DEFS[instrumentName] || INSTRUMENT_DEFS['Rock'];
+  const nodes = [];
+
+  // Reverb (synchronous Schroeder reverberator)
+  const reverb = new Tone.JCReverb(0.35);
+  reverb.wet.value = Math.max(0, Math.min(1, reverbWet));
+  reverb.toDestination();
+  nodes.push(reverb);
+  let tail = reverb;
+
+  // Optional low-pass filter (Funk / Bass tones)
+  if (def.filterFreq) {
+    const filter = new Tone.Filter({ frequency: def.filterFreq, type: 'lowpass', rolloff: -24 });
+    filter.connect(tail);
+    nodes.push(filter);
+    tail = filter;
+  }
+
+  // Chorus (always present; wet controls blend)
+  const chorus = new Tone.Chorus(def.chorusFreq, 2.5, 0.7);
+  chorus.wet.value = Math.max(0, def.chorusDepth);
+  chorus.start();
+  chorus.connect(tail);
+  nodes.push(chorus);
+  tail = chorus;
+
+  // Distortion (skipped for clean/pad sounds)
+  if (def.distAmount > 0.01) {
+    const dist = new Tone.Distortion(def.distAmount);
+    dist.connect(tail);
+    nodes.push(dist);
+    tail = dist;
+  }
+
+  // PolySynth
+  const poly = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: def.oscType },
+    envelope: def.env,
+    maxPolyphony: 16,
+  });
+  poly.volume.value = def.volume;
+  poly.connect(tail);
+
+  synthState = { poly, nodes, reverb };
+  return poly;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MUSIC THEORY
 ═══════════════════════════════════════════════════════ */
 function buildScaleNotes(rootMidi, intervals, octaveRange) {
   const notes = new Set();
@@ -503,8 +628,7 @@ function chooseNext(curIdx, scale, rootMidi, styleDef) {
   const r = Math.random();
   const rootIdxs  = scale.map((n,i) => ({n,i})).filter(({n}) => (n - rootMidi) % 12 === 0);
   const fifthIdxs = scale.map((n,i) => ({n,i})).filter(({n}) => (n - rootMidi) % 12 === 7);
-  const nearest = (arr) => arr.reduce((a,b) =>
-    Math.abs(a.i - curIdx) <= Math.abs(b.i - curIdx) ? a : b);
+  const nearest = arr => arr.reduce((a,b) => Math.abs(a.i - curIdx) <= Math.abs(b.i - curIdx) ? a : b);
 
   if (r < styleDef.preferRoot && rootIdxs.length) return nearest(rootIdxs).i;
   if (r < styleDef.preferRoot + styleDef.preferFifth && fifthIdxs.length) return nearest(fifthIdxs).i;
@@ -520,20 +644,10 @@ function chooseNext(curIdx, scale, rootMidi, styleDef) {
   return idx;
 }
 
-function getDurSteps(step, pattern, complexity) {
-  let dur = 1;
-  if (complexity !== 'Complexo') {
-    for (let i = step + 1; i < pattern.length; i++) {
-      if (pattern[i] === 0) dur++; else break;
-    }
-  }
-  return Math.max(1, dur);
-}
-
 function addPowerChord(notes, pitch, vel, startTick, durTicks) {
-  notes.push({ pitch, velocity: vel, startTick, durationTicks: durTicks });
-  notes.push({ pitch: pitch + 7, velocity: Math.round(vel * 0.9), startTick, durationTicks: durTicks });
-  notes.push({ pitch: pitch + 12, velocity: Math.round(vel * 0.75), startTick, durationTicks: durTicks });
+  notes.push({ pitch,      velocity: vel,                    startTick, durationTicks: durTicks });
+  notes.push({ pitch: pitch+7,  velocity: Math.round(vel*0.90), startTick, durationTicks: durTicks });
+  notes.push({ pitch: pitch+12, velocity: Math.round(vel*0.75), startTick, durationTicks: durTicks });
 }
 
 function clampGuitarRange(p) {
@@ -542,7 +656,9 @@ function clampGuitarRange(p) {
   return p;
 }
 
-/* Generate notes for a single section */
+/* ═══════════════════════════════════════════════════════
+   GENERATION — subdivision-aware
+═══════════════════════════════════════════════════════ */
 function generateSectionNotes(section, globalKey, globalScale, globalVel) {
   const rootMidi  = ROOT_MIDI[globalKey];
   const intervals = SCALES[globalScale];
@@ -550,56 +666,46 @@ function generateSectionNotes(section, globalKey, globalScale, globalVel) {
   const scale     = buildScaleNotes(rootMidi, intervals, styleDef.octaveRange);
   if (!scale.length) return [];
 
-  const rhythm  = section.rhythm;
-  const notes   = [];
-  const density = { 'Simples': 0.55, 'Médio': 1.0, 'Complexo': 1.35 }[section.complexity] ?? 1.0;
+  const subDef      = SUBDIVISIONS[section.subdivision || '16th'];
+  const ticksPerStep = subDef.ticksPerStep;
+  const stepsPerBar  = subDef.stepsPerBar;
+  const rhythm       = section.rhythm;
+  const notes        = [];
+  const density      = { 'Simples': 0.55, 'Médio': 1.0, 'Complexo': 1.35 }[section.complexity] ?? 1.0;
 
-  // Cursor for scale walk
   let curIdx = scale.findIndex(n => (n - rootMidi) % 12 === 0);
   if (curIdx < 0) curIdx = 0;
 
-  // Motif mode: pre-generate a short motif
-  let motif = null;
+  // Pre-generate motif
+  let motif = null, motifPos = 0, motifVariation = 0;
   if (section.noteMode === 'motif') {
     const mLen = 3 + Math.floor(Math.random() * 3);
     motif = [];
     let mi = curIdx;
-    for (let m = 0; m < mLen; m++) {
-      motif.push(scale[mi]);
-      mi = chooseNext(mi, scale, rootMidi, styleDef);
-    }
+    for (let m = 0; m < mLen; m++) { motif.push(scale[mi]); mi = chooseNext(mi, scale, rootMidi, styleDef); }
   }
 
-  // Progression mode: split bars among chords
   const prog = section.chordProgression;
-  const totalSteps = section.bars * 16;
+  const totalSteps = section.bars * stepsPerBar;
   const stepsPerChord = prog.length > 0 ? Math.floor(totalSteps / prog.length) : totalSteps;
 
-  let motifPos = 0;
-  let motifVariation = 0;
-
   for (let step = 0; step < totalSteps; step++) {
-    const patStep = step % 16;
+    const patStep = step % rhythm.length;
     if (rhythm[patStep] !== 1) continue;
     if (Math.random() > density) continue;
 
-    // Decide pitch based on noteMode
     let pitch;
-
     if (section.noteMode === 'progression') {
       const chordIdx = Math.min(prog.length - 1, Math.floor(step / stepsPerChord));
-      const chordSemitone = CHORD_DEGREES[prog[chordIdx]] ?? 0;
-      const chordRoot = rootMidi + chordSemitone;
+      const chordRoot = rootMidi + (CHORD_DEGREES[prog[chordIdx]] ?? 0);
       if (Math.random() < 0.65) {
         pitch = clampGuitarRange(chordRoot);
       } else {
-        // Passing tone from scale near chord root
-        const nearNotes = scale.filter(n => Math.abs(n - chordRoot) <= 5 || Math.abs(n - chordRoot - 12) <= 5);
-        pitch = nearNotes.length ? nearNotes[Math.floor(Math.random() * nearNotes.length)] : clampGuitarRange(chordRoot);
+        const near = scale.filter(n => Math.abs(n - chordRoot) <= 5 || Math.abs(n - chordRoot - 12) <= 5);
+        pitch = near.length ? near[Math.floor(Math.random() * near.length)] : clampGuitarRange(chordRoot);
       }
     } else if (section.noteMode === 'motif' && motif) {
       let mp = motif[motifPos % motif.length];
-      // Apply variation
       if (motifVariation === 1) mp = motif[(motif.length - 1 - motifPos % motif.length)] ?? mp;
       if (motifVariation === 2) mp += 2;
       if (motifVariation === 3 && motifPos % motif.length === motif.length - 1) mp = scale[curIdx];
@@ -607,7 +713,6 @@ function generateSectionNotes(section, globalKey, globalScale, globalVel) {
       motifPos++;
       if (motifPos % motif.length === 0) motifVariation = (motifVariation + 1) % 4;
     } else {
-      // Random scale walk
       curIdx = chooseNext(curIdx, scale, rootMidi, styleDef);
       pitch = scale[curIdx];
     }
@@ -615,12 +720,18 @@ function generateSectionNotes(section, globalKey, globalScale, globalVel) {
     const vel = Math.min(127, Math.max(30,
       globalVel + Math.round((Math.random() - 0.5) * styleDef.velVar * 2)));
 
-    let durSteps = getDurSteps(patStep, rhythm, section.complexity);
-    let durTicks = Math.max(20, Math.round(durSteps * TICKS_16TH * styleDef.noteLengthFactor));
-    if (section.palmMute) durTicks = Math.min(durTicks, Math.round(TICKS_16TH * 0.55));
+    // Duration: consume rest steps until next hit
+    let durSteps = 1;
+    if (section.complexity !== 'Complexo') {
+      for (let i = step + 1; i < Math.min(step + 8, totalSteps); i++) {
+        if (rhythm[i % rhythm.length] === 0) durSteps++; else break;
+      }
+    }
+    let durTicks = Math.max(10, Math.round(durSteps * ticksPerStep * styleDef.noteLengthFactor));
+    if (section.palmMute) durTicks = Math.min(durTicks, Math.round(ticksPerStep * 0.55));
 
-    let startTick = step * TICKS_16TH;
-    if (styleDef.swing && patStep % 2 === 1) startTick += Math.round(TICKS_16TH * 0.20);
+    let startTick = step * ticksPerStep;
+    if (styleDef.swing && patStep % 2 === 1) startTick += Math.round(ticksPerStep * 0.20);
 
     if (section.powerChords) {
       addPowerChord(notes, pitch, vel, startTick, durTicks);
@@ -628,40 +739,32 @@ function generateSectionNotes(section, globalKey, globalScale, globalVel) {
       notes.push({ pitch, velocity: vel, startTick, durationTicks: durTicks });
     }
   }
-
   return notes;
 }
 
-/* Generate full riff from arrangement */
 function generateFullRiff() {
   const key   = $('selKey').value;
   const scale = $('selScale').value;
   const vel   = parseInt($('rangeVelocity').value);
   const allNotes = [];
   let tickOffset = 0;
-  const sectionOffsets = []; // for piano roll markers
+  const sectionOffsets = [];
 
   for (const sName of state.arrangement) {
     const sec = state.sections.find(s => s.name === sName);
     if (!sec) continue;
-
     const secNotes = generateSectionNotes(sec, key, scale, vel);
     const secTicks = sec.bars * TICKS_PER_BAR;
     sectionOffsets.push({ name: sName, startTick: tickOffset, endTick: tickOffset + secTicks });
-
-    for (const n of secNotes) {
-      allNotes.push({ ...n, startTick: n.startTick + tickOffset, section: sName });
-    }
+    for (const n of secNotes) allNotes.push({ ...n, startTick: n.startTick + tickOffset, section: sName });
     tickOffset += secTicks;
   }
 
-  // Add resolving root note at end
+  // Resolving root at end
   if (allNotes.length) {
-    const rootMidi = ROOT_MIDI[key];
-    const intervals = SCALES[scale];
-    const rootNote = clampGuitarRange(rootMidi);
+    const rootNote = clampGuitarRange(ROOT_MIDI[key]);
     const lastTick = Math.max(...allNotes.map(n => n.startTick + n.durationTicks));
-    allNotes.push({ pitch: rootNote, velocity: vel, startTick: lastTick + TICKS_16TH, durationTicks: TICKS_PER_BEAT * 2 });
+    allNotes.push({ pitch: rootNote, velocity: parseInt($('rangeVelocity').value), startTick: lastTick + 120, durationTicks: TICKS_PER_BEAT * 2 });
   }
 
   return { notes: allNotes, sectionOffsets };
@@ -670,101 +773,72 @@ function generateFullRiff() {
 /* ═══════════════════════════════════════════════════════
    MIDI WRITER
 ═══════════════════════════════════════════════════════ */
-function toVarLen(value) {
-  const bytes = [];
-  bytes.unshift(value & 0x7F);
-  value >>>= 7;
-  while (value > 0) { bytes.unshift((value & 0x7F) | 0x80); value >>>= 7; }
-  return bytes;
+function toVarLen(v) {
+  const b = []; b.unshift(v & 0x7F); v >>>= 7;
+  while (v > 0) { b.unshift((v & 0x7F) | 0x80); v >>>= 7; }
+  return b;
 }
-function uint32BE(v) { return [(v>>>24)&0xFF,(v>>>16)&0xFF,(v>>>8)&0xFF,v&0xFF]; }
-function uint16BE(v) { return [(v>>>8)&0xFF, v&0xFF]; }
+const u32 = v => [(v>>>24)&0xFF,(v>>>16)&0xFF,(v>>>8)&0xFF,v&0xFF];
+const u16 = v => [(v>>>8)&0xFF, v&0xFF];
 
 function buildMIDI(notes, bpm, program) {
   const tempo = Math.round(60_000_000 / bpm);
   const events = [];
   for (const n of notes) {
-    events.push({ tick: n.startTick, type: 0x90, data: [n.pitch, n.velocity] });
+    events.push({ tick: n.startTick,                   type: 0x90, data: [n.pitch, n.velocity] });
     events.push({ tick: n.startTick + n.durationTicks, type: 0x80, data: [n.pitch, 0] });
   }
   events.sort((a, b) => a.tick - b.tick || (a.type === 0x80 ? -1 : 1));
-
   const td = [];
   const push = (...b) => b.forEach(x => td.push(x));
   push(0x00, 0xFF, 0x51, 0x03, (tempo>>>16)&0xFF, (tempo>>>8)&0xFF, tempo&0xFF);
   push(0x00, 0xFF, 0x58, 0x04, 0x04, 0x02, 0x18, 0x08);
   push(0x00, 0xC0, program & 0x7F);
-  const name = Array.from('Guitar Riff', c => c.charCodeAt(0));
-  push(0x00, 0xFF, 0x03, name.length, ...name);
-
+  const nameBytes = Array.from('Guitar Riff', c => c.charCodeAt(0));
+  push(0x00, 0xFF, 0x03, nameBytes.length, ...nameBytes);
   let lastTick = 0;
   for (const ev of events) {
     push(...toVarLen(ev.tick - lastTick), ev.type, ...ev.data);
     lastTick = ev.tick;
   }
   push(0x00, 0xFF, 0x2F, 0x00);
-
   return new Uint8Array([
-    0x4D,0x54,0x68,0x64, ...uint32BE(6), ...uint16BE(0), ...uint16BE(1), ...uint16BE(TICKS_PER_BEAT),
-    0x4D,0x54,0x72,0x6B, ...uint32BE(td.length), ...td,
+    0x4D,0x54,0x68,0x64, ...u32(6), ...u16(0), ...u16(1), ...u16(TICKS_PER_BEAT),
+    0x4D,0x54,0x72,0x6B, ...u32(td.length), ...td,
   ]);
 }
 
 /* ═══════════════════════════════════════════════════════
-   AUDIO PLAYBACK
+   AUDIO PLAYBACK — fixed with JCReverb (sync)
 ═══════════════════════════════════════════════════════ */
-function initSynth(styleName) {
-  if (synth) { synth.dispose(); synth = null; }
-  const reverb = new Tone.Reverb({ decay: 1.2, wet: 0.15 }).toDestination();
-  const chorus = new Tone.Chorus(3, 2, 0.3).connect(reverb);
-  chorus.start();
-
-  if (styleName === 'Metal' || styleName === 'Rock Clássico') {
-    const dist = new Tone.Distortion(styleName === 'Metal' ? 0.7 : 0.4).connect(chorus);
-    synth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'sawtooth' },
-      envelope: { attack: 0.004, decay: 0.08, sustain: 0.4, release: 0.6 },
-    }).connect(dist);
-  } else if (styleName === 'Funk') {
-    const filter = new Tone.AutoFilter({ frequency: '8n', depth: 0.8 }).connect(chorus);
-    filter.start();
-    synth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.002, decay: 0.05, sustain: 0.1, release: 0.2 },
-    }).connect(filter);
-  } else {
-    synth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.005, decay: 0.15, sustain: 0.5, release: 0.9 },
-    }).connect(chorus);
-  }
-  synth.volume.value = -6;
-}
-
 function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 
-function scheduleTone(notes, bpm, styleName, onDone) {
+function scheduleNotes(notes, bpm, instrumentName, reverbWet, onDone) {
   Tone.Transport.stop();
   Tone.Transport.cancel();
-  if (part) { part.dispose(); part = null; }
-  initSynth(styleName);
+
+  const poly = buildSynth(instrumentName, reverbWet);
   Tone.Transport.bpm.value = bpm;
 
   const secPerTick = 60 / (bpm * TICKS_PER_BEAT);
   const toneNotes = notes.map(n => ({
     time: n.startTick * secPerTick,
     freq: midiToFreq(n.pitch),
-    dur: Math.max(0.02, n.durationTicks * secPerTick),
-    vel: n.velocity / 127,
+    dur:  Math.max(0.02, n.durationTicks * secPerTick),
+    vel:  n.velocity / 127,
   }));
-  const totalDur = Math.max(...toneNotes.map(n => n.time + n.dur)) + 0.5;
+
+  const totalDur = toneNotes.length
+    ? Math.max(...toneNotes.map(n => n.time + n.dur)) + 1.0
+    : 2;
 
   part = new Tone.Part((time, ev) => {
-    synth.triggerAttackRelease(ev.freq, ev.dur, time, ev.vel);
+    try { poly.triggerAttackRelease(ev.freq, ev.dur, time, ev.vel); } catch(e) {}
   }, toneNotes);
   part.start(0);
   Tone.Transport.start();
-  setTimeout(() => { Tone.Transport.stop(); onDone(); }, totalDur * 1000 + 200);
+
+  setTimeout(() => { Tone.Transport.stop(); onDone(); }, totalDur * 1000 + 400);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -781,10 +855,10 @@ function renderPianoRoll(notes) {
   const minP = Math.min(...pitches) - 2;
   const maxP = Math.max(...pitches) + 2;
   const pitchSpan = maxP - minP;
-
   const maxTick = Math.max(...notes.map(n => n.startTick + n.durationTicks)) + TICKS_PER_BEAT;
-  const W = canvas.offsetWidth || 740;
-  const H = Math.max(100, pitchSpan * 12);
+
+  const W = canvas.offsetWidth || 800;
+  const H = Math.max(90, pitchSpan * 12);
   canvas.width = W; canvas.height = H; canvas.style.height = H + 'px';
 
   ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H);
@@ -793,24 +867,21 @@ function renderPianoRoll(notes) {
   const tickW = W / maxTick;
 
   // Section backgrounds
-  const sectionColors = ['rgba(232,93,4,0.04)', 'rgba(52,152,219,0.04)', 'rgba(46,204,113,0.04)', 'rgba(155,89,182,0.04)'];
-  const sectionNames = [...new Set(state.arrangement)];
+  const SEC_COLORS = ['rgba(232,93,4,0.05)','rgba(52,152,219,0.05)','rgba(46,204,113,0.05)','rgba(155,89,182,0.05)'];
+  const secNames = [...new Set(state.arrangement)];
   lastSectionOffsets.forEach(so => {
-    const cIdx = sectionNames.indexOf(so.name) % sectionColors.length;
-    ctx.fillStyle = sectionColors[cIdx];
+    ctx.fillStyle = SEC_COLORS[secNames.indexOf(so.name) % SEC_COLORS.length];
     ctx.fillRect(so.startTick * tickW, 0, (so.endTick - so.startTick) * tickW, H);
   });
 
-  // Beat grid
+  // Grids
   ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
   for (let t = 0; t < maxTick; t += TICKS_PER_BEAT) {
-    const x = t * tickW;
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(t*tickW, 0); ctx.lineTo(t*tickW, H); ctx.stroke();
   }
   ctx.strokeStyle = 'rgba(255,255,255,0.10)';
   for (let t = 0; t < maxTick; t += TICKS_PER_BAR) {
-    const x = t * tickW;
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(t*tickW, 0); ctx.lineTo(t*tickW, H); ctx.stroke();
   }
 
   // Notes
@@ -820,39 +891,35 @@ function renderPianoRoll(notes) {
     const y = (maxP - n.pitch) * rowH;
     const h = Math.max(3, rowH - 1);
     const bright = 0.5 + (n.velocity / 127) * 0.5;
-    ctx.fillStyle = `hsl(25, 90%, ${Math.round(bright * 60)}%)`;
+    ctx.fillStyle = `hsl(25,90%,${Math.round(bright*60)}%)`;
     ctx.beginPath(); ctx.roundRect(x, y, w, h, 2); ctx.fill();
-    ctx.fillStyle = `rgba(255,255,255,${bright * 0.18})`;
-    ctx.fillRect(x + 1, y + 1, w - 2, h * 0.3);
+    ctx.fillStyle = `rgba(255,255,255,${bright*0.18})`;
+    ctx.fillRect(x+1, y+1, w-2, h*0.3);
   }
 
   // Pitch labels
-  ctx.font = '9px monospace'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
   const NN = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  ctx.font = '9px monospace'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
   for (let p = minP; p <= maxP; p++) {
-    if (p % 12 === 0 || NN[((p % 12) + 12) % 12] === 'E') {
-      ctx.fillText(NN[((p % 12) + 12) % 12] + Math.floor(p / 12 - 1), 3, (maxP - p) * rowH + rowH * 0.75);
-    }
+    const nn = NN[((p%12)+12)%12];
+    if (p%12===0 || nn==='E' || nn==='A')
+      ctx.fillText(nn+Math.floor(p/12-1), 3, (maxP-p)*rowH + rowH*0.75);
   }
 
-  // Section markers below piano roll
   renderSectionMarkers(maxTick, W);
 }
 
 function renderSectionMarkers(maxTick, totalW) {
   const container = $('sectionMarkers');
-  const sectionColors = ['#e85d04', '#3498db', '#2ecc71', '#9b59b6'];
-  const sectionNames = [...new Set(state.arrangement)];
-
+  const SEC_COLORS = ['#e85d04','#3498db','#2ecc71','#9b59b6'];
+  const secNames = [...new Set(state.arrangement)];
   container.innerHTML = '';
   for (const so of lastSectionOffsets) {
     const frac = (so.endTick - so.startTick) / maxTick;
-    const cIdx = sectionNames.indexOf(so.name) % sectionColors.length;
     const el = document.createElement('div');
     el.className = 'section-marker';
-    el.style.flex = `0 0 ${frac * 100}%`;
-    el.style.borderColor = sectionColors[cIdx];
-    el.style.color = sectionColors[cIdx];
+    el.style.flex = `0 0 ${frac*100}%`;
+    el.style.borderColor = el.style.color = SEC_COLORS[secNames.indexOf(so.name) % SEC_COLORS.length];
     el.textContent = so.name;
     container.appendChild(el);
   }
@@ -864,9 +931,11 @@ function renderSectionMarkers(maxTick, totalW) {
 function renderSections() {
   const container = $('sectionsList');
   container.innerHTML = '';
-  const canRemove = state.sections.length > 1;
 
   for (const sec of state.sections) {
+    const canRemove = state.sections.length > 1;
+    const subDef = SUBDIVISIONS[sec.subdivision || '16th'];
+
     const card = document.createElement('div');
     card.className = 'section-card';
     card.innerHTML = `
@@ -876,78 +945,96 @@ function renderSections() {
       </div>
       <div class="section-controls-row">
         <div class="control-group">
-          <span class="section-label">Estilo</span>
+          <span class="section-label">Estilo (padrão musical)</span>
           <select class="sec-style" data-id="${sec.id}">
-            ${Object.keys(STYLE_DEFS).map(s => `<option ${s === sec.style ? 'selected' : ''}>${s}</option>`).join('')}
+            ${Object.keys(STYLE_DEFS).map(s => `<option ${s===sec.style?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>
         <div class="control-group">
           <span class="section-label">Compassos</span>
           <select class="sec-bars" data-id="${sec.id}">
-            ${[1,2,4,8].map(b => `<option value="${b}" ${b === sec.bars ? 'selected' : ''}>${b}</option>`).join('')}
+            ${[1,2,4,8].map(b => `<option value="${b}" ${b===sec.bars?'selected':''}>${b}</option>`).join('')}
           </select>
         </div>
         <div class="control-group">
           <span class="section-label">Complexidade</span>
           <select class="sec-complexity" data-id="${sec.id}">
-            ${['Simples','Médio','Complexo'].map(c => `<option ${c === sec.complexity ? 'selected' : ''}>${c}</option>`).join('')}
+            ${['Simples','Médio','Complexo'].map(c => `<option ${c===sec.complexity?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="control-group">
+          <span class="section-label">Subdivisão rítmica</span>
+          <select class="sec-subdiv" data-id="${sec.id}">
+            ${Object.entries(SUBDIVISIONS).map(([k,v]) =>
+              `<option value="${k}" ${k===sec.subdivision?'selected':''}>${v.label}</option>`
+            ).join('')}
           </select>
         </div>
         <div class="control-group">
           <span class="section-label">Modo de Notas</span>
           <select class="sec-notemode" data-id="${sec.id}">
-            <option value="random" ${sec.noteMode === 'random' ? 'selected' : ''}>Escala Aleatória</option>
-            <option value="progression" ${sec.noteMode === 'progression' ? 'selected' : ''}>Progressão de Acordes</option>
-            <option value="motif" ${sec.noteMode === 'motif' ? 'selected' : ''}>Motivo + Variação</option>
+            <option value="random"      ${sec.noteMode==='random'?'selected':''}>Escala Aleatória</option>
+            <option value="progression" ${sec.noteMode==='progression'?'selected':''}>Progressão de Acordes</option>
+            <option value="motif"       ${sec.noteMode==='motif'?'selected':''}>Motivo + Variação</option>
           </select>
         </div>
       </div>
       <div class="section-toggles">
         <label class="toggle-label">
-          <input type="checkbox" class="sec-power" data-id="${sec.id}" ${sec.powerChords ? 'checked' : ''} />
-          Power Chords (root+5th+8va)
+          <input type="checkbox" class="sec-power" data-id="${sec.id}" ${sec.powerChords?'checked':''} />
+          Power Chords (root+5ª+8ª)
         </label>
         <label class="toggle-label">
-          <input type="checkbox" class="sec-palm" data-id="${sec.id}" ${sec.palmMute ? 'checked' : ''} />
+          <input type="checkbox" class="sec-palm" data-id="${sec.id}" ${sec.palmMute?'checked':''} />
           Palm Mute
         </label>
       </div>
-      <div class="progression-editor" data-id="${sec.id}" style="display:${sec.noteMode === 'progression' ? 'block' : 'none'}">
-        <span class="section-label">Progressão:</span>
+      <div class="progression-editor" data-id="${sec.id}" style="display:${sec.noteMode==='progression'?'block':'none'}; margin-bottom:0.5rem">
+        <span class="section-label">Progressão de acordes:</span>
         <div class="progression-row" data-id="${sec.id}">
-          ${sec.chordProgression.map((deg, i) => `
+          ${sec.chordProgression.map((deg,i) => `
             <select class="prog-degree" data-id="${sec.id}" data-idx="${i}">
-              ${DEGREE_NAMES.map(d => `<option ${d === deg ? 'selected' : ''}>${d}</option>`).join('')}
+              ${DEGREE_NAMES.map(d => `<option ${d===deg?'selected':''}>${d}</option>`).join('')}
             </select>
           `).join('')}
           <button class="btn-xs btn-secondary prog-add" data-id="${sec.id}">+</button>
-          <button class="btn-xs btn-danger-outline prog-remove" data-id="${sec.id}" ${sec.chordProgression.length <= 2 ? 'disabled' : ''}>-</button>
+          <button class="btn-xs btn-danger-outline prog-remove" data-id="${sec.id}" ${sec.chordProgression.length<=2?'disabled':''}>−</button>
         </div>
       </div>
-      <div style="margin-top:0.5rem">
-        <span class="section-label">Ritmo (16th notes):</span>
-        <div class="rhythm-grid" data-id="${sec.id}" style="margin-top:0.3rem">
-          ${[0,1,2,3].map(beat => `
-            <div class="beat-group">
-              ${[0,1,2,3].map(sub => {
-                const idx = beat * 4 + sub;
-                return `<div class="grid-cell ${sec.rhythm[idx] ? 'active' : ''}" data-id="${sec.id}" data-step="${idx}"></div>`;
-              }).join('')}
-            </div>
-          `).join('')}
+      <div>
+        <span class="section-label">
+          Ritmo — ${subDef.label}
+          &nbsp;<span style="color:var(--text-dim);font-size:0.65rem">(${sec.rhythm.length} steps × ${sec.bars} compasso${sec.bars>1?'s':''})</span>
+        </span>
+        <div class="rhythm-grid ${subDef.cssClass}" data-id="${sec.id}" style="margin-top:0.3rem">
+          ${(() => {
+            const cpb = subDef.cellsPerBeat;
+            const beats = Math.ceil(sec.rhythm.length / cpb);
+            let html = '';
+            for (let b = 0; b < beats; b++) {
+              html += '<div class="beat-group">';
+              for (let s = 0; s < cpb; s++) {
+                const idx = b * cpb + s;
+                if (idx >= sec.rhythm.length) break;
+                html += `<div class="grid-cell ${sec.rhythm[idx]?'active':''}" data-id="${sec.id}" data-step="${idx}"></div>`;
+              }
+              html += '</div>';
+            }
+            return html;
+          })()}
         </div>
       </div>
     `;
     container.appendChild(card);
   }
 
-  // Event listeners
+  // ── Event listeners ──
   container.querySelectorAll('.btn-remove').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = parseInt(btn.dataset.id);
       const sec = state.sections.find(s => s.id === id);
       state.sections = state.sections.filter(s => s.id !== id);
-      state.arrangement = state.arrangement.filter(n => n !== sec.name || state.sections.some(s => s.name === n));
+      state.arrangement = state.arrangement.filter(n => n !== sec.name);
       if (!state.arrangement.length && state.sections.length) state.arrangement = [state.sections[0].name];
       renderAll();
     });
@@ -957,22 +1044,29 @@ function renderSections() {
     sel.addEventListener('change', () => {
       const sec = state.sections.find(s => s.id === parseInt(sel.dataset.id));
       sec.style = sel.value;
-      sec.rhythm = [...DEFAULT_RHYTHMS[sel.value]];
+      sec.rhythm = getDefaultRhythm(sec.style, sec.subdivision || '16th');
       renderSections();
     });
   });
 
   container.querySelectorAll('.sec-bars').forEach(sel => {
     sel.addEventListener('change', () => {
-      const sec = state.sections.find(s => s.id === parseInt(sel.dataset.id));
-      sec.bars = parseInt(sel.value);
+      state.sections.find(s => s.id === parseInt(sel.dataset.id)).bars = parseInt(sel.value);
     });
   });
 
   container.querySelectorAll('.sec-complexity').forEach(sel => {
     sel.addEventListener('change', () => {
+      state.sections.find(s => s.id === parseInt(sel.dataset.id)).complexity = sel.value;
+    });
+  });
+
+  container.querySelectorAll('.sec-subdiv').forEach(sel => {
+    sel.addEventListener('change', () => {
       const sec = state.sections.find(s => s.id === parseInt(sel.dataset.id));
-      sec.complexity = sel.value;
+      sec.subdivision = sel.value;
+      sec.rhythm = getDefaultRhythm(sec.style, sec.subdivision);
+      renderSections();
     });
   });
 
@@ -980,22 +1074,20 @@ function renderSections() {
     sel.addEventListener('change', () => {
       const sec = state.sections.find(s => s.id === parseInt(sel.dataset.id));
       sec.noteMode = sel.value;
-      const progEditor = container.querySelector(`.progression-editor[data-id="${sec.id}"]`);
-      if (progEditor) progEditor.style.display = sel.value === 'progression' ? 'block' : 'none';
+      const ed = container.querySelector(`.progression-editor[data-id="${sec.id}"]`);
+      if (ed) ed.style.display = sel.value === 'progression' ? 'block' : 'none';
     });
   });
 
   container.querySelectorAll('.sec-power').forEach(chk => {
     chk.addEventListener('change', () => {
-      const sec = state.sections.find(s => s.id === parseInt(chk.dataset.id));
-      sec.powerChords = chk.checked;
+      state.sections.find(s => s.id === parseInt(chk.dataset.id)).powerChords = chk.checked;
     });
   });
 
   container.querySelectorAll('.sec-palm').forEach(chk => {
     chk.addEventListener('change', () => {
-      const sec = state.sections.find(s => s.id === parseInt(chk.dataset.id));
-      sec.palmMute = chk.checked;
+      state.sections.find(s => s.id === parseInt(chk.dataset.id)).palmMute = chk.checked;
     });
   });
 
@@ -1018,26 +1110,19 @@ function renderSections() {
   container.querySelectorAll('.prog-add').forEach(btn => {
     btn.addEventListener('click', () => {
       const sec = state.sections.find(s => s.id === parseInt(btn.dataset.id));
-      if (sec.chordProgression.length < 8) {
-        sec.chordProgression.push('I');
-        renderSections();
-      }
+      if (sec.chordProgression.length < 8) { sec.chordProgression.push('I'); renderSections(); }
     });
   });
 
   container.querySelectorAll('.prog-remove').forEach(btn => {
     btn.addEventListener('click', () => {
       const sec = state.sections.find(s => s.id === parseInt(btn.dataset.id));
-      if (sec.chordProgression.length > 2) {
-        sec.chordProgression.pop();
-        renderSections();
-      }
+      if (sec.chordProgression.length > 2) { sec.chordProgression.pop(); renderSections(); }
     });
   });
 }
 
 function renderArrangement() {
-  // Chips
   const chips = $('arrangementChips');
   chips.innerHTML = '';
   state.arrangement.forEach((name, idx) => {
@@ -1047,140 +1132,130 @@ function renderArrangement() {
     chips.appendChild(chip);
   });
   chips.querySelectorAll('.arr-remove').forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.arrangement.splice(parseInt(btn.dataset.idx), 1);
-      renderArrangement();
-    });
+    btn.addEventListener('click', () => { state.arrangement.splice(parseInt(btn.dataset.idx), 1); renderArrangement(); });
   });
 
-  // Add buttons
   const addBtns = $('addArrBtns');
   addBtns.innerHTML = '';
   for (const sec of state.sections) {
     const btn = document.createElement('button');
     btn.className = 'btn-secondary btn-xs';
     btn.textContent = `+ ${sec.name}`;
-    btn.addEventListener('click', () => {
-      state.arrangement.push(sec.name);
-      renderArrangement();
-    });
+    btn.addEventListener('click', () => { state.arrangement.push(sec.name); renderArrangement(); });
     addBtns.appendChild(btn);
   }
 }
 
-function renderAll() {
-  renderSections();
-  renderArrangement();
-}
+function renderAll() { renderSections(); renderArrangement(); }
 
 /* ═══════════════════════════════════════════════════════
    PRESETS
 ═══════════════════════════════════════════════════════ */
 const PRESETS = {
   'power-rock': {
-    key: 'A', scale: 'Pentatônica Menor', bpm: 128, velocity: 100,
+    key: 'A', scale: 'Pentatônica Menor', bpm: 128, velocity: 100, reverb: 18,
+    instrument: 'Rock',
     sections: [
-      { name: 'A', bars: 2, style: 'Rock Clássico', complexity: 'Médio', powerChords: true, palmMute: false,
-        noteMode: 'progression', chordProgression: ['I', 'bVII', 'IV', 'I'],
-        rhythm: [1,0,0,0, 1,0,1,0, 0,0,1,0, 1,0,0,0] },
-      { name: 'B', bars: 2, style: 'Rock Clássico', complexity: 'Complexo', powerChords: false, palmMute: false,
-        noteMode: 'motif', chordProgression: ['I', 'IV'],
-        rhythm: [1,0,1,0, 0,1,1,0, 0,0,1,0, 1,0,1,0] },
+      { name:'A', bars:2, style:'Rock Clássico', complexity:'Médio',    subdivision:'16th',
+        powerChords:true, palmMute:false, noteMode:'progression',
+        chordProgression:['I','bVII','IV','I'], rhythm:[1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0] },
+      { name:'B', bars:2, style:'Rock Clássico', complexity:'Complexo', subdivision:'16th',
+        powerChords:false, palmMute:false, noteMode:'motif',
+        chordProgression:['I','IV'], rhythm:[1,0,1,0,0,1,1,0,0,0,1,0,1,0,1,0] },
     ],
-    arrangement: ['A', 'A', 'B', 'A'],
+    arrangement: ['A','A','B','A'],
   },
   'blues-shuffle': {
-    key: 'E', scale: 'Blues', bpm: 100, velocity: 85,
+    key: 'E', scale: 'Blues', bpm: 100, velocity: 85, reverb: 22,
+    instrument: 'Blues',
     sections: [
-      { name: 'A', bars: 2, style: 'Blues Shuffle', complexity: 'Médio', powerChords: false, palmMute: false,
-        noteMode: 'progression', chordProgression: ['I', 'IV', 'I', 'V'],
-        rhythm: [1,0,1,0, 0,0,1,0, 0,1,1,0, 1,0,0,0] },
-      { name: 'B', bars: 2, style: 'Blues Shuffle', complexity: 'Complexo', powerChords: false, palmMute: false,
-        noteMode: 'random', chordProgression: ['I', 'IV'],
-        rhythm: [1,0,0,1, 0,1,0,0, 1,0,1,0, 0,0,1,0] },
+      { name:'A', bars:2, style:'Blues Shuffle', complexity:'Médio',    subdivision:'16th',
+        powerChords:false, palmMute:false, noteMode:'progression',
+        chordProgression:['I','IV','I','V'], rhythm:[1,0,1,0,0,0,1,0,0,1,1,0,1,0,0,0] },
+      { name:'B', bars:2, style:'Blues Shuffle', complexity:'Complexo', subdivision:'triplet',
+        powerChords:false, palmMute:false, noteMode:'random',
+        chordProgression:['I','IV'], rhythm:[1,0,1,0,0,1,1,0,0,1,0,1] },
     ],
-    arrangement: ['A', 'A', 'B', 'A'],
+    arrangement: ['A','A','B','A'],
   },
   'metal': {
-    key: 'D', scale: 'Menor Natural', bpm: 160, velocity: 115,
+    key: 'D', scale: 'Menor Natural', bpm: 160, velocity: 115, reverb: 10,
+    instrument: 'Metal',
     sections: [
-      { name: 'A', bars: 2, style: 'Metal', complexity: 'Complexo', powerChords: true, palmMute: true,
-        noteMode: 'progression', chordProgression: ['I', 'bII', 'bVII', 'I'],
-        rhythm: [1,1,0,1, 1,0,1,1, 0,1,1,0, 1,1,0,1] },
-      { name: 'B', bars: 1, style: 'Metal', complexity: 'Médio', powerChords: true, palmMute: false,
-        noteMode: 'motif', chordProgression: ['I', 'V'],
-        rhythm: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0] },
+      { name:'A', bars:2, style:'Metal', complexity:'Complexo', subdivision:'16th',
+        powerChords:true, palmMute:true,  noteMode:'progression',
+        chordProgression:['I','bII','bVII','I'], rhythm:[1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1] },
+      { name:'B', bars:1, style:'Metal', complexity:'Médio',    subdivision:'8th',
+        powerChords:true, palmMute:false, noteMode:'motif',
+        chordProgression:['I','V'], rhythm:[1,0,1,0,1,0,1,0] },
     ],
-    arrangement: ['A', 'A', 'A', 'B'],
+    arrangement: ['A','A','A','B'],
   },
   'funk': {
-    key: 'E', scale: 'Dórica', bpm: 108, velocity: 88,
+    key: 'E', scale: 'Dórica', bpm: 108, velocity: 88, reverb: 12,
+    instrument: 'Funk (Wah)',
     sections: [
-      { name: 'A', bars: 2, style: 'Funk', complexity: 'Complexo', powerChords: false, palmMute: true,
-        noteMode: 'random', chordProgression: ['I', 'IV'],
-        rhythm: [1,0,0,1, 0,1,0,0, 1,0,0,1, 0,0,1,0] },
-      { name: 'B', bars: 2, style: 'Funk', complexity: 'Médio', powerChords: false, palmMute: false,
-        noteMode: 'progression', chordProgression: ['I', 'IV', 'bVII', 'IV'],
-        rhythm: [1,0,1,0, 0,0,1,1, 0,1,0,0, 1,0,1,0] },
+      { name:'A', bars:2, style:'Funk', complexity:'Complexo', subdivision:'16th',
+        powerChords:false, palmMute:true,  noteMode:'random',
+        chordProgression:['I','IV'], rhythm:[1,0,0,1,0,1,0,0,1,0,0,1,0,0,1,0] },
+      { name:'B', bars:2, style:'Funk', complexity:'Médio',    subdivision:'16th',
+        powerChords:false, palmMute:false, noteMode:'progression',
+        chordProgression:['I','IV','bVII','IV'], rhythm:[1,0,1,0,0,0,1,1,0,1,0,0,1,0,1,0] },
     ],
-    arrangement: ['A', 'B', 'A', 'B'],
+    arrangement: ['A','B','A','B'],
   },
   'pentatonic': {
-    key: 'A', scale: 'Pentatônica Menor', bpm: 115, velocity: 90,
+    key: 'A', scale: 'Pentatônica Menor', bpm: 115, velocity: 90, reverb: 20,
+    instrument: 'Guitarra Chorus',
     sections: [
-      { name: 'A', bars: 2, style: 'Alternativo', complexity: 'Médio', powerChords: false, palmMute: false,
-        noteMode: 'motif', chordProgression: ['I', 'IV'],
-        rhythm: [1,0,1,0, 0,1,0,0, 1,0,0,1, 0,1,0,0] },
+      { name:'A', bars:2, style:'Alternativo', complexity:'Médio', subdivision:'16th',
+        powerChords:false, palmMute:false, noteMode:'motif',
+        chordProgression:['I','IV'], rhythm:[1,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0] },
     ],
-    arrangement: ['A', 'A'],
+    arrangement: ['A','A'],
   },
 };
 
-function applyPreset(presetName) {
-  const p = PRESETS[presetName];
+function applyPreset(name) {
+  const p = PRESETS[name];
   if (!p) return;
-
   $('selKey').value = p.key;
   $('selScale').value = p.scale;
-  $('rangeBpm').value = p.bpm; $('bpmVal').textContent = p.bpm;
+  $('rangeBpm').value = p.bpm;       $('bpmVal').textContent = p.bpm;
   $('rangeVelocity').value = Math.min(127, p.velocity); $('velVal').textContent = Math.min(127, p.velocity);
+  $('rangeReverb').value = p.reverb ?? 15; $('reverbVal').textContent = (p.reverb ?? 15) + '%';
+  if (p.instrument) $('selInstrument').value = p.instrument;
 
   sectionIdCounter = 0;
-  state.sections = p.sections.map(s => createSection(s.name, {
-    bars: s.bars, style: s.style, complexity: s.complexity,
+  state.sections = p.sections.map(s => ({
+    id: sectionIdCounter++,
+    name: s.name, bars: s.bars, style: s.style, complexity: s.complexity,
+    subdivision: s.subdivision || '16th',
     powerChords: s.powerChords, palmMute: s.palmMute,
     noteMode: s.noteMode, chordProgression: [...s.chordProgression],
     rhythm: [...s.rhythm],
   }));
   state.arrangement = [...p.arrangement];
   renderAll();
-  setStatus(`Preset "${presetName}" carregado`, 'ok');
+  setStatus(`Preset "${name}" carregado — instrumento: ${p.instrument}`, 'ok');
 }
 
 /* ═══════════════════════════════════════════════════════
    ACTIONS
 ═══════════════════════════════════════════════════════ */
-function setStatus(msg, cls = '') {
-  $('status').textContent = msg;
-  $('status').className = cls;
-}
+function setStatus(msg, cls='') { $('status').textContent = msg; $('status').className = cls; }
 
 function onGenerate() {
-  if (!state.arrangement.length) {
-    setStatus('Adicione pelo menos uma seção no arranjo.', 'err');
-    return;
-  }
+  if (!state.arrangement.length) { setStatus('Adicione pelo menos uma seção no arranjo.', 'err'); return; }
   setStatus('Gerando riff...', '');
 
   const { notes, sectionOffsets } = generateFullRiff();
   lastSectionOffsets = sectionOffsets;
   currentNotes = notes;
 
-  // Determine MIDI program from first section
-  const firstSec = state.sections.find(s => s.name === state.arrangement[0]);
-  const program = firstSec ? STYLE_DEFS[firstSec.style].program : 30;
-  const bpm = parseInt($('rangeBpm').value);
-  currentMIDI = buildMIDI(notes, bpm, program);
+  const bpm  = parseInt($('rangeBpm').value);
+  const prog = INSTRUMENT_DEFS[$('selInstrument').value]?.midiProgram ?? 30;
+  currentMIDI = buildMIDI(notes, bpm, prog);
 
   $('emptyMsg').style.display = 'none';
   $('pianoRoll').style.display = 'block';
@@ -1193,48 +1268,63 @@ function onGenerate() {
     ? (Math.max(...notes.map(n => n.startTick + n.durationTicks)) / TICKS_PER_BEAT / bpm * 60).toFixed(1)
     : 0;
   const unique = new Set(notes.map(n => n.pitch)).size;
-  $('infoBar').innerHTML = `
-    <span>Tom: <strong>${$('selKey').value}</strong></span>
-    <span>Escala: <strong>${$('selScale').value}</strong></span>
-    <span>BPM: <strong>${bpm}</strong></span>
-    <span>Seções: <strong>${state.arrangement.join(' ')}</strong></span>
-    <span>Notas: <strong>${notes.length}</strong></span>
-    <span>Únicas: <strong>${unique}</strong></span>
-    <span>Duração: <strong>~${totalSec}s</strong></span>
-  `;
-  setStatus(`Riff gerado com ${notes.length} notas em ${state.arrangement.length} seções!`, 'ok');
+  $('infoBar').innerHTML = [
+    `Tom: <strong>${$('selKey').value}</strong>`,
+    `Escala: <strong>${$('selScale').value}</strong>`,
+    `Instrumento: <strong>${$('selInstrument').value}</strong>`,
+    `BPM: <strong>${bpm}</strong>`,
+    `Arranjo: <strong>${state.arrangement.join(' ')}</strong>`,
+    `Notas: <strong>${notes.length}</strong>`,
+    `Únicas: <strong>${unique}</strong>`,
+    `Duração: <strong>~${totalSec}s</strong>`,
+  ].map(s => `<span>${s}</span>`).join('');
+
+  setStatus(`Riff gerado com ${notes.length} notas — instrumento: ${$('selInstrument').value}`, 'ok');
 }
 
 async function onPlay() {
   if (isPlaying || !currentNotes) return;
-  await Tone.start();
-  const bpm = parseInt($('rangeBpm').value);
-  const firstSec = state.sections.find(s => s.name === state.arrangement[0]);
-  const styleName = firstSec ? firstSec.style : 'Rock Clássico';
+  $('btnPlay').disabled = true;
+  setStatus('Iniciando áudio...', '');
+
+  try {
+    // Tone.start() must be called inside a user gesture handler
+    await Tone.start();
+    // Resume context if it was suspended by the browser
+    if (Tone.context.state !== 'running') await Tone.context.resume();
+  } catch(e) {
+    setStatus('Erro ao ativar áudio. Tente clicar Tocar novamente.', 'err');
+    $('btnPlay').disabled = false;
+    return;
+  }
+
+  const bpm          = parseInt($('rangeBpm').value);
+  const instrumentName = $('selInstrument').value;
+  const reverbWet    = parseInt($('rangeReverb').value) / 100;
 
   isPlaying = true;
-  $('btnPlay').disabled = true;
   $('btnStop').disabled = false;
-  setStatus('Tocando...', '');
+  setStatus(`Tocando... [${instrumentName}]`, '');
 
+  // Playhead animation
   const canvas = $('pianoRoll');
   const maxTick = Math.max(...currentNotes.map(n => n.startTick + n.durationTicks)) + TICKS_PER_BEAT;
-  const totalMs = (maxTick / TICKS_PER_BEAT / bpm * 60 * 1000) + 300;
+  const totalMs = (maxTick / TICKS_PER_BEAT / bpm * 60 * 1000) + 800;
   const startTime = Date.now();
   $('playhead').style.display = 'block';
-
+  clearInterval(playheadTimer);
   playheadTimer = setInterval(() => {
     const frac = Math.min(1, (Date.now() - startTime) / totalMs);
     $('playhead').style.left = (frac * canvas.offsetWidth) + 'px';
   }, 40);
 
-  scheduleTone(currentNotes, bpm, styleName, stopPlayback);
+  scheduleNotes(currentNotes, bpm, instrumentName, reverbWet, stopPlayback);
 }
 
 function stopPlayback() {
   isPlaying = false;
-  Tone.Transport.stop();
-  if (part) { part.dispose(); part = null; }
+  try { Tone.Transport.stop(); } catch(e) {}
+  disposeSynth();
   clearInterval(playheadTimer);
   $('playhead').style.display = 'none';
   $('btnPlay').disabled = false;
@@ -1244,14 +1334,12 @@ function stopPlayback() {
 
 function onDownload() {
   if (!currentMIDI) return;
-  const key = $('selKey').value.replace('/', '_');
+  const key = $('selKey').value.replace('/','_');
   const bpm = $('rangeBpm').value;
   const blob = new Blob([currentMIDI], { type: 'audio/midi' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = `riff_${key}_${bpm}bpm_${state.arrangement.join('')}.mid`;
-  a.click();
+  a.href = url; a.download = `riff_${key}_${bpm}bpm_${state.arrangement.join('')}.mid`; a.click();
   URL.revokeObjectURL(url);
   setStatus('MIDI baixado!', 'ok');
 }
@@ -1259,8 +1347,14 @@ function onDownload() {
 /* ═══════════════════════════════════════════════════════
    INIT & EVENTS
 ═══════════════════════════════════════════════════════ */
-$('rangeBpm').addEventListener('input', e => { $('bpmVal').textContent = e.target.value; });
-$('rangeVelocity').addEventListener('input', e => { $('velVal').textContent = e.target.value; });
+$('rangeBpm').addEventListener('input',      e => { $('bpmVal').textContent    = e.target.value; });
+$('rangeVelocity').addEventListener('input', e => { $('velVal').textContent    = e.target.value; });
+$('rangeReverb').addEventListener('input',   e => {
+  $('reverbVal').textContent = e.target.value + '%';
+  // Live-update reverb while synth is active
+  if (synthState?.reverb) synthState.reverb.wet.value = parseInt(e.target.value) / 100;
+});
+
 $('btnGenerate').addEventListener('click', onGenerate);
 $('btnPlay').addEventListener('click', onPlay);
 $('btnStop').addEventListener('click', stopPlayback);
@@ -1268,27 +1362,22 @@ $('btnDownload').addEventListener('click', onDownload);
 
 $('btnAddSection').addEventListener('click', () => {
   const names = state.sections.map(s => s.name);
-  const next = String.fromCharCode(65 + names.length); // A, B, C...
-  const newName = names.includes(next) ? next + '2' : next;
-  state.sections.push(createSection(newName));
+  let next = String.fromCharCode(65 + names.length);
+  if (names.includes(next)) next += '2';
+  state.sections.push(createSection(next));
   renderAll();
 });
 
-// Preset buttons
 document.querySelectorAll('[data-preset]').forEach(btn => {
   btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
 });
 
-// Resize
 let resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    if (currentNotes) renderPianoRoll(currentNotes);
-  }, 200);
+  resizeTimer = setTimeout(() => { if (currentNotes) renderPianoRoll(currentNotes); }, 200);
 });
 
-// Initial render
 renderAll();
 </script>
 </body>
