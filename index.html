@@ -310,6 +310,13 @@
         <span class="range-val" id="reverbVal">15%</span>
       </div>
     </div>
+    <div class="control-group">
+      <label for="selLanguage" id="langLabel">Idioma</label>
+      <select id="selLanguage">
+        <option value="pt" selected>Português</option>
+        <option value="en">English</option>
+      </select>
+    </div>
   </div>
 </div>
 
@@ -527,10 +534,251 @@ function createSection(name, overrides = {}) {
   };
 }
 
+/* ═══════════════════════════════════════════════════════
+   TRANSLATIONS — English & Portuguese
+═══════════════════════════════════════════════════════ */
+const TRANSLATIONS = {
+  en: {
+    // Header
+    title: 'Guitar Riff MIDI Generator',
+    subtitle: 'Instrument, subdivision, sections & arrangement — play and download MIDI',
+
+    // Global Settings
+    globalSettings: 'Global Settings',
+    key: 'Key',
+    scale: 'Scale',
+    instrument: 'Instrument / Texture',
+    language: 'Language',
+    bpm: 'BPM',
+    velocity: 'Velocity',
+    reverb: 'Reverb',
+
+    // Sections
+    sectionsTitle: 'Riff Sections',
+    addSection: '+ Add Section',
+    style: 'Style (note pattern)',
+    bars: 'Bars',
+    complexity: 'Complexity',
+    subdivision: 'Subdivision',
+    noteMode: 'Note Mode',
+    randomScale: 'Random Scale',
+    chordProgression: 'Chord Progression',
+    motifVariation: 'Motif + Variation',
+    powerChords: 'Power Chords (root+5th+8va)',
+    palmMute: 'Palm Mute',
+    rhythm: 'Rhythm',
+    steps: 'steps',
+    bar: 'bar',
+    bars: 'bars',
+    remove: 'Remove',
+    chordProgressionLabel: 'Chord progression:',
+
+    // Subdivisions
+    eightNote: 'Eighth (8th)',
+    sixteenthNote: 'Sixteenth (16th)',
+    thirtySecondNote: 'Thirty-second (32nd)',
+    triplet: 'Triplet (8th)',
+
+    // Styles
+    classicRock: 'Classic Rock',
+    bluesShuffle: 'Blues Shuffle',
+    metal: 'Metal',
+    funk: 'Funk',
+    alternative: 'Alternative',
+
+    // Scales
+    minPent: 'Minor Pentatonic',
+    blues: 'Blues',
+    minNat: 'Natural Minor',
+    dorian: 'Dorian',
+    mixolydian: 'Mixolydian',
+    majPent: 'Major Pentatonic',
+
+    // Instruments
+    cleanGuitar: 'Clean Guitar',
+    chorusGuitar: 'Chorus Guitar',
+    overdrive: 'Overdrive',
+    rock: 'Rock',
+    metalInstr: 'Metal',
+    bluesInstr: 'Blues',
+    funkWah: 'Funk (Wah)',
+    electricBass: 'Electric Bass',
+    synthLead: 'Synth Lead',
+    synthPad: 'Synth Pad',
+
+    // Arrangement
+    arrangeTitle: 'Arrangement',
+    presets: 'Presets:',
+    powerRock: 'Power Rock',
+    bluesShuffle: 'Blues Shuffle',
+    metalRiff: 'Metal Riff',
+    funkGroove: 'Funk Groove',
+    pentatonic: 'Pentatonic',
+
+    // Actions
+    generate: '▶ Generate Riff',
+    play: '▶ Play',
+    stop: '⬛ Stop',
+    download: '⬇ Download MIDI',
+
+    // Piano Roll
+    pianoRoll: 'Piano Roll',
+    generateToView: 'Generate a riff to see notes',
+
+    // Info
+    info: 'Information',
+    generateToSeeDetails: 'Generate a riff to see details',
+    key_label: 'Key:',
+    scale_label: 'Scale:',
+    instrument_label: 'Instrument:',
+    bpm_label: 'BPM:',
+    sections_label: 'Sections:',
+    notes_label: 'Notes:',
+    unique_label: 'Unique:',
+    duration_label: 'Duration:',
+
+    // Messages
+    genLoading: 'Generating riff...',
+    genError: 'Add at least one section to the arrangement.',
+    genSuccess: (count, sections) => `Riff generated with ${count} notes in ${sections} sections!`,
+    genStatus: (count, instrument) => `Riff generated — instrument: ${instrument}`,
+    audioLoading: 'Starting audio...',
+    audioError: 'Error activating audio. Try clicking Play again.',
+    audioPlaying: (instrument) => `Playing... [${instrument}]`,
+    midiDownloaded: 'MIDI downloaded!',
+    presetLoaded: (name, instrument) => `Preset "${name}" loaded — instrument: ${instrument}`,
+
+    // Footer
+    footer: '100% client-side — no server. Compatible with GarageBand, REAPER, Ableton, FL Studio.',
+  },
+  pt: {
+    // Header
+    title: 'Gerador de Riff MIDI para Guitarra',
+    subtitle: 'Instrumento, subdivisão, seções e arranjo customizáveis — escute e baixe MIDI',
+
+    // Global Settings
+    globalSettings: 'Configurações Globais',
+    key: 'Tonalidade',
+    scale: 'Escala',
+    instrument: 'Instrumento / Textura',
+    language: 'Idioma',
+    bpm: 'BPM',
+    velocity: 'Dinâmica',
+    reverb: 'Reverb',
+
+    // Sections
+    sectionsTitle: 'Seções do Riff',
+    addSection: '+ Adicionar Seção',
+    style: 'Estilo (padrão musical)',
+    bars: 'Compassos',
+    complexity: 'Complexidade',
+    subdivision: 'Subdivisão rítmica',
+    noteMode: 'Modo de Notas',
+    randomScale: 'Escala Aleatória',
+    chordProgression: 'Progressão de Acordes',
+    motifVariation: 'Motivo + Variação',
+    powerChords: 'Power Chords (root+5ª+8ª)',
+    palmMute: 'Palm Mute',
+    rhythm: 'Ritmo',
+    steps: 'passos',
+    bar: 'compasso',
+    bars: 'compassos',
+    remove: 'Remover',
+    chordProgressionLabel: 'Progressão de acordes:',
+
+    // Subdivisions
+    eightNote: 'Colcheia (8ª)',
+    sixteenthNote: 'Semicolcheia (16ª)',
+    thirtySecondNote: 'Fusa (32ª)',
+    triplet: 'Tercina (8ª)',
+
+    // Styles
+    classicRock: 'Rock Clássico',
+    bluesShuffle: 'Blues Shuffle',
+    metal: 'Metal',
+    funk: 'Funk',
+    alternative: 'Alternativo',
+
+    // Scales
+    minPent: 'Pentatônica Menor',
+    blues: 'Blues',
+    minNat: 'Menor Natural',
+    dorian: 'Dórica',
+    mixolydian: 'Mixolídia',
+    majPent: 'Pentatônica Maior',
+
+    // Instruments
+    cleanGuitar: 'Guitarra Limpa',
+    chorusGuitar: 'Guitarra Chorus',
+    overdrive: 'Overdrive',
+    rock: 'Rock',
+    metalInstr: 'Metal',
+    bluesInstr: 'Blues',
+    funkWah: 'Funk (Wah)',
+    electricBass: 'Bass Elétrico',
+    synthLead: 'Synth Lead',
+    synthPad: 'Synth Pad',
+
+    // Arrangement
+    arrangeTitle: 'Arranjo',
+    presets: 'Presets:',
+    powerRock: 'Power Rock',
+    bluesShuffle: 'Blues Shuffle',
+    metalRiff: 'Metal Riff',
+    funkGroove: 'Funk Groove',
+    pentatonic: 'Pentatônico',
+
+    // Actions
+    generate: '▶ Gerar Riff',
+    play: '▶ Tocar',
+    stop: '⬛ Parar',
+    download: '⬇ Baixar MIDI',
+
+    // Piano Roll
+    pianoRoll: 'Piano Roll',
+    generateToView: 'Gere um riff para visualizar as notas',
+
+    // Info
+    info: 'Informações',
+    generateToSeeDetails: 'Gere um riff para ver os detalhes',
+    key_label: 'Tom:',
+    scale_label: 'Escala:',
+    instrument_label: 'Instrumento:',
+    bpm_label: 'BPM:',
+    sections_label: 'Seções:',
+    notes_label: 'Notas:',
+    unique_label: 'Únicas:',
+    duration_label: 'Duração:',
+
+    // Messages
+    genLoading: 'Gerando riff...',
+    genError: 'Adicione pelo menos uma seção no arranjo.',
+    genSuccess: (count, sections) => `Riff gerado com ${count} notas em ${sections} seções!`,
+    genStatus: (count, instrument) => `Riff gerado — instrumento: ${instrument}`,
+    audioLoading: 'Iniciando áudio...',
+    audioError: 'Erro ao ativar áudio. Tente clicar Tocar novamente.',
+    audioPlaying: (instrument) => `Tocando... [${instrument}]`,
+    midiDownloaded: 'MIDI baixado!',
+    presetLoaded: (name, instrument) => `Preset "${name}" carregado — instrumento: ${instrument}`,
+
+    // Footer
+    footer: '100% client-side — sem servidor. Compatível com GarageBand, REAPER, Ableton, FL Studio.',
+  }
+};
+
 const state = {
   sections: [createSection('A')],
   arrangement: ['A'],
+  language: localStorage.getItem('guitarRiffLang') || 'pt',
 };
+
+// Translation helper
+function t(key) {
+  const lang = state.language;
+  const val = TRANSLATIONS[lang]?.[key];
+  if (typeof val === 'function') return val;
+  return val || TRANSLATIONS.pt[key] || key;
+}
 
 let currentNotes = null;
 let currentMIDI  = null;
@@ -1237,7 +1485,7 @@ function applyPreset(name) {
   }));
   state.arrangement = [...p.arrangement];
   renderAll();
-  setStatus(`Preset "${name}" carregado — instrumento: ${p.instrument}`, 'ok');
+  setStatus(t('presetLoaded')(name, p.instrument), 'ok');
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1246,8 +1494,8 @@ function applyPreset(name) {
 function setStatus(msg, cls='') { $('status').textContent = msg; $('status').className = cls; }
 
 function onGenerate() {
-  if (!state.arrangement.length) { setStatus('Adicione pelo menos uma seção no arranjo.', 'err'); return; }
-  setStatus('Gerando riff...', '');
+  if (!state.arrangement.length) { setStatus(t('genError'), 'err'); return; }
+  setStatus(t('genLoading'), '');
 
   const { notes, sectionOffsets } = generateFullRiff();
   lastSectionOffsets = sectionOffsets;
@@ -1269,23 +1517,23 @@ function onGenerate() {
     : 0;
   const unique = new Set(notes.map(n => n.pitch)).size;
   $('infoBar').innerHTML = [
-    `Tom: <strong>${$('selKey').value}</strong>`,
-    `Escala: <strong>${$('selScale').value}</strong>`,
-    `Instrumento: <strong>${$('selInstrument').value}</strong>`,
-    `BPM: <strong>${bpm}</strong>`,
-    `Arranjo: <strong>${state.arrangement.join(' ')}</strong>`,
-    `Notas: <strong>${notes.length}</strong>`,
-    `Únicas: <strong>${unique}</strong>`,
-    `Duração: <strong>~${totalSec}s</strong>`,
+    `${t('key_label')} <strong>${$('selKey').value}</strong>`,
+    `${t('scale_label')} <strong>${$('selScale').value}</strong>`,
+    `${t('instrument_label')} <strong>${$('selInstrument').value}</strong>`,
+    `${t('bpm_label')} <strong>${bpm}</strong>`,
+    `${t('sections_label')} <strong>${state.arrangement.join(' ')}</strong>`,
+    `${t('notes_label')} <strong>${notes.length}</strong>`,
+    `${t('unique_label')} <strong>${unique}</strong>`,
+    `${t('duration_label')} <strong>~${totalSec}s</strong>`,
   ].map(s => `<span>${s}</span>`).join('');
 
-  setStatus(`Riff gerado com ${notes.length} notas — instrumento: ${$('selInstrument').value}`, 'ok');
+  setStatus(t('genStatus')(notes.length, $('selInstrument').value), 'ok');
 }
 
 async function onPlay() {
   if (isPlaying || !currentNotes) return;
   $('btnPlay').disabled = true;
-  setStatus('Iniciando áudio...', '');
+  setStatus(t('audioLoading'), '');
 
   try {
     // Tone.start() must be called inside a user gesture handler
@@ -1293,7 +1541,7 @@ async function onPlay() {
     // Resume context if it was suspended by the browser
     if (Tone.context.state !== 'running') await Tone.context.resume();
   } catch(e) {
-    setStatus('Erro ao ativar áudio. Tente clicar Tocar novamente.', 'err');
+    setStatus(t('audioError'), 'err');
     $('btnPlay').disabled = false;
     return;
   }
@@ -1304,7 +1552,7 @@ async function onPlay() {
 
   isPlaying = true;
   $('btnStop').disabled = false;
-  setStatus(`Tocando... [${instrumentName}]`, '');
+  setStatus(t('audioPlaying')(instrumentName), '');
 
   // Playhead animation
   const canvas = $('pianoRoll');
@@ -1341,7 +1589,82 @@ function onDownload() {
   const a = document.createElement('a');
   a.href = url; a.download = `riff_${key}_${bpm}bpm_${state.arrangement.join('')}.mid`; a.click();
   URL.revokeObjectURL(url);
-  setStatus('MIDI baixado!', 'ok');
+  setStatus(t('midiDownloaded'), 'ok');
+}
+
+/* ═══════════════════════════════════════════════════════
+   LOCALIZATION
+═══════════════════════════════════════════════════════ */
+function setLanguage(lang) {
+  state.language = lang;
+  localStorage.setItem('guitarRiffLang', lang);
+  $('selLanguage').value = lang;
+  updateUIText();
+  renderAll();
+}
+
+function updateUIText() {
+  // Header
+  document.querySelector('header h1').textContent = '🎸 ' + t('title');
+  document.querySelector('header p').textContent = t('subtitle');
+
+  // Global Settings card title
+  document.querySelectorAll('.card-title')[0].textContent = t('globalSettings');
+
+  // Labels in global settings
+  document.querySelectorAll('label')[0].textContent = t('key');
+  document.querySelectorAll('label')[1].textContent = t('scale');
+  document.querySelectorAll('label')[2].textContent = t('instrument');
+  document.querySelectorAll('label')[3].textContent = t('bpm');
+  document.querySelectorAll('label')[4].textContent = t('velocity');
+  document.querySelectorAll('label')[5].textContent = t('reverb');
+  document.querySelector('#langLabel').textContent = t('language');
+
+  // Sections title
+  document.querySelectorAll('.card-title')[1].textContent = t('sectionsTitle');
+  document.querySelector('#btnAddSection').textContent = t('addSection');
+
+  // Arrangement title
+  document.querySelectorAll('.card-title')[2].textContent = t('arrangeTitle');
+
+  // Preset row
+  document.querySelector('.preset-row span').textContent = t('presets');
+  document.querySelectorAll('[data-preset]').forEach(btn => {
+    const presetName = btn.dataset.preset;
+    const translationKey = presetName.split('-').map((w, i) => {
+      if (i === 0) return w.charAt(0).toUpperCase() + w.slice(1);
+      return w === 'rock' ? 'Rock' :
+             w === 'shuffle' ? 'Shuffle' :
+             w === 'riff' ? 'Riff' :
+             w === 'groove' ? 'Groove' : w;
+    }).join('');
+    // Map preset button text directly
+    const presetLabels = {
+      'power-rock': t('powerRock'),
+      'blues-shuffle': t('bluesShuffle'),
+      'metal': t('metalRiff'),
+      'funk': t('funkGroove'),
+      'pentatonic': t('pentatonic'),
+    };
+    btn.textContent = presetLabels[presetName] || presetName;
+  });
+
+  // Actions card buttons
+  document.querySelector('#btnGenerate').textContent = t('generate');
+  document.querySelector('#btnPlay').textContent = t('play');
+  document.querySelector('#btnStop').textContent = t('stop');
+  document.querySelector('#btnDownload').textContent = t('download');
+
+  // Piano Roll title
+  document.querySelectorAll('.card-title')[3].textContent = t('pianoRoll');
+  document.querySelector('#emptyMsg').textContent = t('generateToView');
+
+  // Info title
+  document.querySelectorAll('.card-title')[4].textContent = t('info');
+  document.querySelector('#infoBar').innerHTML = '<span>' + t('generateToSeeDetails') + '</span>';
+
+  // Footer
+  document.querySelector('footer').textContent = t('footer');
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1354,6 +1677,8 @@ $('rangeReverb').addEventListener('input',   e => {
   // Live-update reverb while synth is active
   if (synthState?.reverb) synthState.reverb.wet.value = parseInt(e.target.value) / 100;
 });
+
+$('selLanguage').addEventListener('change', e => setLanguage(e.target.value));
 
 $('btnGenerate').addEventListener('click', onGenerate);
 $('btnPlay').addEventListener('click', onPlay);
@@ -1378,6 +1703,7 @@ window.addEventListener('resize', () => {
   resizeTimer = setTimeout(() => { if (currentNotes) renderPianoRoll(currentNotes); }, 200);
 });
 
+updateUIText();
 renderAll();
 </script>
 </body>
