@@ -809,7 +809,7 @@ function disposeSynth() {
  *
  * Chain: PolySynth → [Distortion] → Chorus → [Filter] → JCReverb → Destination
  */
-function buildSynth(instrumentName, reverbWet) {
+function buildSynth(instrumentName, reverbWet, noteDurSec) {
   disposeSynth();
   const def = INSTRUMENT_DEFS[instrumentName] || INSTRUMENT_DEFS['Rock'];
   const nodes = [];
@@ -845,10 +845,19 @@ function buildSynth(instrumentName, reverbWet) {
     tail = dist;
   }
 
+  // Clamp ADSR so slow-attack instruments (Synth Pad: attack 0.30s) remain
+  // audible at short note durations (e.g. 16th notes at fast BPM).
+  let env = { ...def.env };
+  if (noteDurSec && isFinite(noteDurSec) && noteDurSec > 0) {
+    env.attack  = Math.min(env.attack,  noteDurSec * 0.45);
+    env.decay   = Math.min(env.decay,   noteDurSec * 0.35);
+    env.release = Math.min(env.release, Math.max(0.05, noteDurSec * 0.8));
+  }
+
   // PolySynth
   const poly = new Tone.PolySynth(Tone.Synth, {
     oscillator: { type: def.oscType },
-    envelope: def.env,
+    envelope: env,
     maxPolyphony: 16,
   });
   poly.volume.value = def.volume;
@@ -1066,9 +1075,6 @@ function scheduleNotes(notes, bpm, instrumentName, reverbWet, onDone) {
   Tone.Transport.cancel();
   Tone.Transport.position = 0; // rewind — stop() pauses without resetting, so replay would start at end → silence
 
-  const poly = buildSynth(instrumentName, reverbWet);
-  Tone.Transport.bpm.value = bpm;
-
   const secPerTick = 60 / (bpm * TICKS_PER_BEAT);
   const toneNotes = notes.map(n => ({
     time: n.startTick * secPerTick,
@@ -1076,6 +1082,11 @@ function scheduleNotes(notes, bpm, instrumentName, reverbWet, onDone) {
     dur:  Math.max(0.02, n.durationTicks * secPerTick),
     vel:  n.velocity / 127,
   }));
+
+  // Pass the shortest note duration so buildSynth can clamp slow ADSR attacks
+  const minDurSec = toneNotes.length ? Math.min(...toneNotes.map(n => n.dur)) : 0.1;
+  const poly = buildSynth(instrumentName, reverbWet, minDurSec);
+  Tone.Transport.bpm.value = bpm;
 
   const totalDur = toneNotes.length
     ? Math.max(...toneNotes.map(n => n.time + n.dur)) + 1.0
