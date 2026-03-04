@@ -649,7 +649,6 @@ let currentNotes = null;
 let currentMidi  = null;
 let isPlaying    = false;
 let synthState   = null; // { poly, nodes }
-let scheduledPart = null;
 let playStartTime = 0;
 let totalDurationMs = 0;
 let playTimer = null;
@@ -862,7 +861,6 @@ function buildMidi(notes, bpm, program) {
    AUDIO (Tone.js — JCReverb = synchronous)
 ═══════════════════════════════════════════════════════ */
 function disposeSynth() {
-  if (scheduledPart) { try { scheduledPart.dispose(); } catch(e) {} scheduledPart = null; }
   if (synthState) {
     try { synthState.poly.dispose(); } catch(e) {}
     synthState.nodes.forEach(n => { try { n.dispose(); } catch(e) {} });
@@ -870,7 +868,7 @@ function disposeSynth() {
   }
 }
 
-function buildSynth(program) {
+function buildSynth(program, noteDurSec) {
   disposeSynth();
   const family = getSynthFamily(program);
   const nodes = [];
@@ -888,18 +886,27 @@ function buildSynth(program) {
 
   let tail = chorus;
 
-  // Add distortion for guitars 24-31
-  if (program >= 24 && program <= 31 && program >= 29) {
+  // Add distortion for electric guitars 29-31
+  if (program >= 29 && program <= 31) {
     const dist = new Tone.Distortion(0.4);
     dist.connect(tail);
     nodes.push(dist);
     tail = dist;
   }
 
+  // Clamp ADSR so slow-attack instruments (Pads, Strings) remain audible
+  // at short note durations. Attack must fit within the note duration.
+  let env = { ...family.env };
+  if (noteDurSec && isFinite(noteDurSec) && noteDurSec > 0) {
+    env.attack  = Math.min(env.attack,  noteDurSec * 0.45);
+    env.decay   = Math.min(env.decay,   noteDurSec * 0.35);
+    env.release = Math.min(env.release, Math.max(0.05, noteDurSec * 0.8));
+  }
+
   const poly = new Tone.PolySynth(Tone.Synth, {
     oscillator: { type: family.osc },
-    envelope: family.env,
-    maxPolyphony: 12,
+    envelope: env,
+    maxPolyphony: 16,
   });
   poly.volume.value = family.vol;
   poly.connect(tail);
@@ -961,32 +968,31 @@ async function togglePlay() {
     return;
   }
 
-  const bpm = parseInt($('numBpm').value) || 120;
-  const program = parseInt($('selInstrument').value);
+  const bpm        = parseInt($('numBpm').value) || 120;
+  const program    = parseInt($('selInstrument').value);
+  const domDiv     = parseInt($('selDuration').value);
+  // Dominant note duration in seconds — used to clamp ADSR attack
+  const noteDurSec = (60 / bpm) * (4 / domDiv);
 
-  Tone.Transport.stop();
-  Tone.Transport.cancel();
-  Tone.Transport.position = 0; // reset playhead — without this, restart plays from end → silence
-
-  const poly = buildSynth(program);
-  Tone.Transport.bpm.value = bpm;
-
+  const poly       = buildSynth(program, noteDurSec);
   const secPerTick = 60 / (bpm * TICKS_PER_BEAT);
-  const toneNotes = currentNotes.map(n => ({
-    time: n.startTick * secPerTick,
-    freq: midiToFreq(n.pitch),
-    dur: Math.max(0.02, n.durationTicks * secPerTick),
-    vel: n.velocity / 127,
-  }));
+  // Small lookahead so first notes don't get cut off
+  const t0         = Tone.context.currentTime + 0.1;
 
-  scheduledPart = new Tone.Part((time, ev) => {
-    try { poly.triggerAttackRelease(ev.freq, ev.dur, time, ev.vel); } catch(e) {}
-  }, toneNotes);
-  scheduledPart.start(0);
+  // Schedule all notes directly via Web Audio clock — no Transport needed.
+  // When stopPlayback() disposes the poly, the audio graph disconnects and
+  // all in-flight / future notes go silent immediately.
+  for (const n of currentNotes) {
+    const freq = midiToFreq(n.pitch);
+    if (!isFinite(freq) || freq < 20 || freq > 22000) continue; // sanitize
+    const t   = t0 + n.startTick * secPerTick;
+    const dur = Math.max(0.05, n.durationTicks * secPerTick);
+    const vel = Math.min(1, Math.max(0.01, n.velocity / 127));
+    try { poly.triggerAttackRelease(freq, dur, t, vel); } catch(e) {}
+  }
 
   isPlaying = true;
   playStartTime = Date.now();
-  Tone.Transport.start();
 
   clearInterval(playTimer);
   playTimer = setInterval(() => {
@@ -1000,14 +1006,12 @@ async function togglePlay() {
 
 function stopPlayback() {
   isPlaying = false;
-  try { Tone.Transport.stop(); Tone.Transport.position = 0; } catch(e) {}
-  disposeSynth();
+  disposeSynth(); // disconnects poly — silences all scheduled notes immediately
   clearInterval(playTimer);
   $('btnPlay').innerHTML = '&#9654;';
   $('btnPlay').classList.remove('active');
   $('progressSlider').value = 0;
-  const totalSec = totalDurationMs / 1000;
-  $('timeDisplay').textContent = '0:00 / ' + formatTime(totalSec);
+  $('timeDisplay').textContent = '0:00 / ' + formatTime(totalDurationMs / 1000);
 }
 
 function downloadMidi() {
