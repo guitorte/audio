@@ -602,40 +602,62 @@ const KEY_SEMITONES = {
 };
 
 /* Map GM program ranges to Tone.js synth configs.
-   Categories approximate the GM family. */
+   Categories approximate the GM family. Each entry now carries its own
+   effect parameters so different instrument families have distinct character:
+   reverbWet  — spatial depth (0=dry, 0.5=very wet)
+   chorusFreq — chorus LFO speed in Hz
+   chorusDepth— chorus wet mix (0=off, 0.55=thick)
+   distAmount — waveshaper distortion (0=clean, 0.8=heavy)
+   filterFreq — optional low-pass cutoff in Hz (null = no filter) */
 const SYNTH_FAMILIES = [
-  // 0-7 Piano
-  { osc:'triangle', env:{attack:0.005,decay:0.3,sustain:0.2,release:0.8}, vol:-4 },
-  // 8-15 Chromatic Percussion
-  { osc:'sine',     env:{attack:0.001,decay:0.4,sustain:0.05,release:0.6}, vol:-3 },
-  // 16-23 Organ
-  { osc:'square',   env:{attack:0.01,decay:0.1,sustain:0.8,release:0.3}, vol:-8 },
-  // 24-31 Guitar
-  { osc:'triangle', env:{attack:0.005,decay:0.2,sustain:0.3,release:0.7}, vol:-5 },
-  // 32-39 Bass
-  { osc:'sine',     env:{attack:0.008,decay:0.2,sustain:0.5,release:0.4}, vol:-3 },
-  // 40-47 Strings
-  { osc:'sawtooth', env:{attack:0.12,decay:0.2,sustain:0.7,release:1.0}, vol:-8 },
-  // 48-55 Ensemble
-  { osc:'sawtooth', env:{attack:0.15,decay:0.3,sustain:0.65,release:1.2}, vol:-9 },
-  // 56-63 Brass
-  { osc:'square',   env:{attack:0.04,decay:0.15,sustain:0.6,release:0.5}, vol:-7 },
-  // 64-71 Reed
-  { osc:'square',   env:{attack:0.02,decay:0.15,sustain:0.5,release:0.6}, vol:-7 },
-  // 72-79 Pipe
-  { osc:'sine',     env:{attack:0.03,decay:0.1,sustain:0.6,release:0.8}, vol:-5 },
-  // 80-87 Synth Lead
-  { osc:'sawtooth', env:{attack:0.01,decay:0.1,sustain:0.5,release:0.6}, vol:-8 },
-  // 88-95 Synth Pad
-  { osc:'sine',     env:{attack:0.3,decay:0.4,sustain:0.7,release:1.5}, vol:-8 },
-  // 96-103 Synth Effects
-  { osc:'square',   env:{attack:0.1,decay:0.3,sustain:0.3,release:1.0}, vol:-9 },
-  // 104-111 Ethnic
-  { osc:'triangle', env:{attack:0.003,decay:0.25,sustain:0.15,release:0.5}, vol:-5 },
-  // 112-119 Percussive
-  { osc:'triangle', env:{attack:0.001,decay:0.2,sustain:0.0,release:0.3}, vol:-3 },
-  // 120-127 Sound Effects
-  { osc:'sine',     env:{attack:0.05,decay:0.5,sustain:0.3,release:1.0}, vol:-6 },
+  // 0-7  Piano — clear, moderate reverb, subtle chorus
+  { osc:'triangle', env:{attack:0.006,decay:0.30,sustain:0.20,release:0.9}, vol:-4,
+    reverbWet:0.18, chorusFreq:2.5, chorusDepth:0.10, distAmount:0,    filterFreq:null },
+  // 8-15 Chromatic Percussion — vibraphone/marimba, bright attack, quick decay
+  { osc:'sine',     env:{attack:0.001,decay:0.40,sustain:0.05,release:0.7}, vol:-3,
+    reverbWet:0.22, chorusFreq:3.5, chorusDepth:0.08, distAmount:0,    filterFreq:null },
+  // 16-23 Organ — sustained square, thick chorus (classic rotary feel)
+  { osc:'square',   env:{attack:0.012,decay:0.10,sustain:0.85,release:0.3}, vol:-8,
+    reverbWet:0.14, chorusFreq:3.0, chorusDepth:0.42, distAmount:0,    filterFreq:null },
+  // 24-31 Guitar — electric grit, mild distortion, narrow reverb
+  { osc:'triangle', env:{attack:0.005,decay:0.18,sustain:0.30,release:0.8}, vol:-5,
+    reverbWet:0.15, chorusFreq:2.0, chorusDepth:0.20, distAmount:0.35, filterFreq:null },
+  // 32-39 Bass — warm sine, tight low-pass, minimal reverb
+  { osc:'sine',     env:{attack:0.008,decay:0.18,sustain:0.55,release:0.4}, vol:-2,
+    reverbWet:0.09, chorusFreq:1.5, chorusDepth:0.04, distAmount:0.04, filterFreq:700 },
+  // 40-47 Strings — lush sawtooth, wide reverb, rich chorus
+  { osc:'sawtooth', env:{attack:0.14,decay:0.20,sustain:0.72,release:1.2}, vol:-8,
+    reverbWet:0.32, chorusFreq:2.0, chorusDepth:0.46, distAmount:0,    filterFreq:null },
+  // 48-55 Ensemble — the widest, most ambient preset
+  { osc:'sawtooth', env:{attack:0.18,decay:0.30,sustain:0.65,release:1.4}, vol:-9,
+    reverbWet:0.40, chorusFreq:1.5, chorusDepth:0.52, distAmount:0,    filterFreq:null },
+  // 56-63 Brass — punchy square, slight drive for bite
+  { osc:'square',   env:{attack:0.040,decay:0.14,sustain:0.62,release:0.5}, vol:-7,
+    reverbWet:0.18, chorusFreq:2.0, chorusDepth:0.10, distAmount:0.12, filterFreq:null },
+  // 64-71 Reed — woodwind character, clean and airy
+  { osc:'square',   env:{attack:0.022,decay:0.15,sustain:0.52,release:0.7}, vol:-7,
+    reverbWet:0.22, chorusFreq:2.5, chorusDepth:0.14, distAmount:0,    filterFreq:null },
+  // 72-79 Pipe — flute/recorder, sine with airy reverb
+  { osc:'sine',     env:{attack:0.035,decay:0.10,sustain:0.62,release:0.9}, vol:-5,
+    reverbWet:0.30, chorusFreq:1.8, chorusDepth:0.18, distAmount:0,    filterFreq:null },
+  // 80-87 Synth Lead — bright sawtooth, moderate drive and chorus
+  { osc:'sawtooth', env:{attack:0.012,decay:0.10,sustain:0.52,release:0.7}, vol:-8,
+    reverbWet:0.18, chorusFreq:4.0, chorusDepth:0.32, distAmount:0.14, filterFreq:null },
+  // 88-95 Synth Pad — slow sine, maximum reverb and lush chorus
+  { osc:'sine',     env:{attack:0.30,decay:0.40,sustain:0.72,release:2.0}, vol:-7,
+    reverbWet:0.45, chorusFreq:0.8, chorusDepth:0.55, distAmount:0,    filterFreq:null },
+  // 96-103 Synth Effects — atmospheric square, high reverb
+  { osc:'square',   env:{attack:0.10,decay:0.30,sustain:0.32,release:1.2}, vol:-9,
+    reverbWet:0.38, chorusFreq:1.5, chorusDepth:0.38, distAmount:0,    filterFreq:null },
+  // 104-111 Ethnic — triangle with subtle warmth
+  { osc:'triangle', env:{attack:0.004,decay:0.25,sustain:0.18,release:0.6}, vol:-5,
+    reverbWet:0.22, chorusFreq:2.0, chorusDepth:0.14, distAmount:0,    filterFreq:null },
+  // 112-119 Percussive — triangle, punchy, no sustain, tight reverb
+  { osc:'triangle', env:{attack:0.001,decay:0.18,sustain:0.00,release:0.3}, vol:-3,
+    reverbWet:0.14, chorusFreq:3.0, chorusDepth:0.06, distAmount:0,    filterFreq:null },
+  // 120-127 Sound Effects — dreamy sine, wide reverb
+  { osc:'sine',     env:{attack:0.06,decay:0.50,sustain:0.32,release:1.2}, vol:-6,
+    reverbWet:0.35, chorusFreq:1.0, chorusDepth:0.22, distAmount:0,    filterFreq:null },
 ];
 
 function getSynthFamily(program) {
@@ -874,29 +896,41 @@ function buildSynth(program, noteDurSec) {
   const family = getSynthFamily(program);
   const nodes = [];
 
-  const reverb = new Tone.JCReverb(0.3);
-  reverb.wet.value = 0.15;
+  // Signal chain (built back-to-front, each node connects to the next):
+  //   PolySynth → [Distortion] → Chorus → [Low-pass Filter] → JCReverb → Dest
+
+  const reverb = new Tone.JCReverb(0.32);
+  reverb.wet.value = family.reverbWet;
   reverb.toDestination();
   nodes.push(reverb);
+  let tail = reverb;
 
-  const chorus = new Tone.Chorus(2, 2.5, 0.7);
-  chorus.wet.value = 0.12;
+  // Optional low-pass filter (bass/wah tones)
+  if (family.filterFreq) {
+    const filter = new Tone.Filter({ frequency: family.filterFreq, type: 'lowpass', rolloff: -24 });
+    filter.connect(tail);
+    nodes.push(filter);
+    tail = filter;
+  }
+
+  // Chorus — per-family frequency and depth
+  const chorus = new Tone.Chorus(family.chorusFreq, 2.5, 0.7);
+  chorus.wet.value = family.chorusDepth;
   chorus.start();
-  chorus.connect(reverb);
+  chorus.connect(tail);
   nodes.push(chorus);
+  tail = chorus;
 
-  let tail = chorus;
-
-  // Add distortion for electric guitars 29-31
-  if (program >= 29 && program <= 31) {
-    const dist = new Tone.Distortion(0.4);
+  // Optional distortion — placed before chorus so saturation shapes modulation
+  if (family.distAmount > 0.01) {
+    const dist = new Tone.Distortion(family.distAmount);
     dist.connect(tail);
     nodes.push(dist);
     tail = dist;
   }
 
   // Clamp ADSR so slow-attack instruments (Pads, Strings) remain audible
-  // at short note durations. Attack must fit within the note duration.
+  // at short note durations.
   let env = { ...family.env };
   if (noteDurSec && isFinite(noteDurSec) && noteDurSec > 0) {
     env.attack  = Math.min(env.attack,  noteDurSec * 0.45);
