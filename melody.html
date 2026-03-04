@@ -966,6 +966,7 @@ async function togglePlay() {
 
   Tone.Transport.stop();
   Tone.Transport.cancel();
+  Tone.Transport.position = 0; // reset playhead — without this, restart plays from end → silence
 
   const poly = buildSynth(program);
   Tone.Transport.bpm.value = bpm;
@@ -1071,8 +1072,9 @@ $('btnPlay').addEventListener('click', togglePlay);
 $('btnDice').addEventListener('click', randomize);
 $('btnDownload').addEventListener('click', downloadMidi);
 
-// Re-generate MIDI when instrument changes (for correct program in MIDI)
+// Instrument change: stop active playback so synth is rebuilt on next play
 $('selInstrument').addEventListener('change', () => {
+  if (isPlaying) stopPlayback(); // forces disposeSynth + transport reset
   if (currentNotes) {
     const bpm = parseInt($('numBpm').value) || 120;
     const program = parseInt($('selInstrument').value);
