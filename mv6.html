@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MIDIGEN 1.0 — Melody Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0a0a12;
+      --surface: rgba(16,16,30,0.88);
+      --border:  rgba(120,100,200,0.22);
+      --accent:  #7c5cbf;
+      --accent2: #9b7fd4;
+      --accent3: #b99de6;
+      --text:    #e4e0f0;
+      --dim:     rgba(180,170,210,0.55);
+      --radius:  10px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated Background ── */
+    #bgCanvas {
+      position: fixed; inset: 0; width: 100%; height: 100%;
+      z-index: 0; pointer-events: none;
+    }
+
+    /* ── Layout ── */
+    .app-wrap {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center;
+      min-height: 100vh;
+      padding: 1.8rem 1rem 6.5rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    header h1 {
+      font-size: clamp(1.6rem, 5vw, 2.2rem);
+      font-weight: 800;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, var(--accent), var(--accent3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header .version {
+      font-size: 0.72rem; color: var(--dim);
+      letter-spacing: 3px; margin-top: 0.2rem;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.3rem;
+      width: 100%;
+      max-width: 460px;
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-size: 0.66rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 2px;
+      color: var(--dim); margin-bottom: 0.9rem;
+    }
+
+    /* ── Form Controls ── */
+    .form-group {
+      margin-bottom: 0.85rem;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.78rem; color: var(--dim);
+      font-weight: 500; margin-bottom: 0.3rem;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.7rem;
+    }
+    select, input[type="number"] {
+      width: 100%;
+      background: rgba(20,18,40,0.75);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 0.5rem 0.6rem;
+      font-size: 0.85rem;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      transition: border-color 0.15s;
+    }
+    select:hover, select:focus,
+    input:hover, input:focus {
+      border-color: var(--accent);
+    }
+    select option { background: #14122a; }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      opacity: 0.4;
+    }
+
+    /* Checkbox row */
+    .checkbox-group {
+      display: flex; gap: 1.2rem; flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+    .check-label {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.82rem; color: var(--text);
+      cursor: pointer; user-select: none;
+    }
+    .check-label input[type="checkbox"] {
+      width: 16px; height: 16px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* ── Generate Button ── */
+    .btn-generate {
+      display: block; width: 100%;
+      padding: 0.75rem;
+      border: none; border-radius: 8px;
+      font-size: 0.95rem; font-weight: 700;
+      color: #fff; cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #5a3d9e);
+      box-shadow: 0 4px 20px rgba(124,92,191,0.25);
+      transition: all 0.15s;
+      margin-top: 0.4rem;
+    }
+    .btn-generate:hover { filter: brightness(1.15); transform: translateY(-1px); }
+    .btn-generate:active { transform: scale(0.98); }
+
+    .btn-download {
+      display: block; width: 100%;
+      padding: 0.55rem;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: 0.82rem; font-weight: 600;
+      color: var(--accent3); cursor: pointer;
+      background: transparent;
+      transition: all 0.15s;
+      margin-top: 0.5rem;
+    }
+    .btn-download:hover { background: rgba(124,92,191,0.12); border-color: var(--accent); }
+    .btn-download:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ── Player Bar (fixed bottom) ── */
+    .player-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(10,10,20,0.96);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      padding: 0.5rem 0.8rem;
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+
+    .player-btn {
+      width: 36px; height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 50%; background: transparent;
+      color: var(--text); font-size: 1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.12s;
+      flex-shrink: 0;
+    }
+    .player-btn:hover { border-color: var(--accent); color: var(--accent3); }
+    .player-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+    .player-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .player-time {
+      font-size: 0.72rem; color: var(--dim);
+      font-variant-numeric: tabular-nums;
+      min-width: 70px; text-align: center;
+      flex-shrink: 0;
+    }
+
+    .player-slider {
+      flex: 1; height: 4px;
+      -webkit-appearance: none; appearance: none;
+      background: rgba(120,100,200,0.18);
+      border-radius: 2px; outline: none;
+      cursor: pointer;
+    }
+    .player-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--accent3);
+      cursor: pointer;
+    }
+    .player-slider::-moz-range-thumb {
+      width: 12px; height: 12px;
+      border-radius: 50%; border: none;
+      background: var(--accent3);
+      cursor: pointer;
+    }
+
+    .player-instrument {
+      background: rgba(20,18,40,0.75);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text); padding: 0.3rem 0.4rem;
+      font-size: 0.7rem; outline: none;
+      appearance: none; -webkit-appearance: none;
+      max-width: 150px; flex-shrink: 0;
+    }
+    .player-instrument:focus { border-color: var(--accent); }
+    .player-instrument option { background: #14122a; font-size: 0.75rem; }
+    .player-instrument optgroup { color: var(--accent3); font-weight: 600; }
+
+    #status {
+      font-size: 0.76rem; color: var(--dim);
+      min-height: 1.2rem; text-align: center;
+      margin-top: 0.4rem;
+    }
+    #status.ok  { color: #72d49b; }
+    #status.err { color: #e27070; }
+
+    @media (max-width: 480px) {
+      .form-row { grid-template-columns: 1fr; }
+      .player-instrument { max-width: 100px; font-size: 0.65rem; }
+      .player-time { min-width: 50px; font-size: 0.65rem; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="app-wrap">
+
+  <header>
+    <h1>MIDIGEN</h1>
+    <div class="version">v2.0 &mdash; MULTI-ENGINE MELODY GENERATOR</div>
+  </header>
+
+  <div class="card">
+    <div class="card-title">Parameters</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="selScale">Select Scale</label>
+        <select id="selScale">
+          <option value="major" selected>Major Scale</option>
+          <option value="naturalMinor">Natural Minor</option>
+          <option value="harmonicMinor">Harmonic Minor</option>
+          <option value="melodicMinor">Melodic Minor</option>
+          <option value="dorian">Dorian</option>
+          <option value="phrygian">Phrygian</option>
+          <option value="lydian">Lydian</option>
+          <option value="mixolydian">Mixolydian</option>
+          <option value="locrian">Locrian</option>
+          <option value="pentMajor">Pentatonic Major</option>
+          <option value="pentMinor">Pentatonic Minor</option>
+          <option value="blues">Blues</option>
+          <option value="wholeTone">Whole Tone</option>
+          <option value="chromatic">Chromatic</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="selKey">Select Key</label>
+        <select id="selKey">
+          <option selected>C</option><option>C#</option><option>D</option>
+          <option>D#</option><option>E</option><option>F</option>
+          <option>F#</option><option>G</option><option>G#</option>
+          <option>A</option><option>A#</option><option>B</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="numBars">Number of Bars</label>
+        <input type="number" id="numBars" min="1" max="32" value="4" />
+      </div>
+      <div class="form-group">
+        <label for="numBpm">Tempo (BPM)</label>
+        <input type="number" id="numBpm" min="40" max="300" value="120" />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="selDuration">Dominant Note Duration</label>
+        <select id="selDuration">
+          <option value="1">Whole Note (1/1)</option>
+          <option value="2">Half Note (1/2)</option>
+          <option value="4">Quarter Note (1/4)</option>
+          <option value="8" selected>Eighth Note (1/8)</option>
+          <option value="16">Sixteenth Note (1/16)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="selOctave">Select Octave</label>
+        <select id="selOctave">
+          <option value="2">Very Low</option>
+          <option value="3">Low</option>
+          <option value="4" selected>Medium</option>
+          <option value="5">High</option>
+          <option value="6">Very High</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="checkbox-group">
+      <label class="check-label"><input type="checkbox" id="chkArpeggios" /> Include Arpeggios</label>
+      <label class="check-label"><input type="checkbox" id="chkRests" checked /> Include Rests</label>
+      <label class="check-label"><input type="checkbox" id="chkChords" /> Chords</label>
+    </div>
+
+    <button class="btn-generate" id="btnGenerate">Generate MIDI</button>
+    <button class="btn-download" id="btnDownload" disabled>Download MIDI File</button>
+    <p id="status"></p>
+  </div>
+
+</div>
+
+<!-- Fixed Player Bar -->
+<div class="player-bar">
+  <button class="player-btn" id="btnDice" title="Randomize">&#127922;</button>
+  <button class="player-btn" id="btnPlay" disabled title="Play/Pause">&#9654;</button>
+  <span class="player-time" id="timeDisplay">0:00 / 0:00</span>
+  <input type="range" class="player-slider" id="progressSlider" min="0" max="1000" value="0" disabled />
+  <select class="player-instrument" id="selInstrument">
+    <!-- Options exactly as before -->
+    <optgroup label="Piano"><option value="0" selected>Acoustic Grand Piano</option><option value="1">Bright Acoustic Piano</option><option value="2">Electric Grand Piano</option><option value="3">Honky-tonk Piano</option><option value="4">Electric Piano 1</option><option value="5">Electric Piano 2</option><option value="6">Harpsichord</option><option value="7">Clavinet</option></optgroup>
+    <optgroup label="Chromatic Percussion"><option value="8">Celesta</option><option value="9">Glockenspiel</option><option value="10">Music Box</option><option value="11">Vibraphone</option><option value="12">Marimba</option><option value="13">Xylophone</option><option value="14">Tubular Bells</option><option value="15">Dulcimer</option></optgroup>
+    <optgroup label="Organ"><option value="16">Drawbar Organ</option><option value="17">Percussive Organ</option><option value="18">Rock Organ</option><option value="19">Church Organ</option><option value="20">Reed Organ</option><option value="21">Accordion</option><option value="22">Harmonica</option><option value="23">Tango Accordion</option></optgroup>
+    <optgroup label="Guitar"><option value="24">Acoustic Guitar (nylon)</option><option value="25">Acoustic Guitar (steel)</option><option value="26">Electric Guitar (jazz)</option><option value="27">Electric Guitar (clean)</option><option value="28">Electric Guitar (muted)</option><option value="29">Overdriven Guitar</option><option value="30">Distortion Guitar</option><option value="31">Guitar Harmonics</option></optgroup>
+    <optgroup label="Bass"><option value="32">Acoustic Bass</option><option value="33">Electric Bass (finger)</option><option value="34">Electric Bass (pick)</option><option value="35">Fretless Bass</option><option value="36">Slap Bass 1</option><option value="37">Slap Bass 2</option><option value="38">Synth Bass 1</option><option value="39">Synth Bass 2</option></optgroup>
+    <optgroup label="Strings"><option value="40">Violin</option><option value="41">Viola</option><option value="42">Cello</option><option value="43">Contrabass</option><option value="44">Tremolo Strings</option><option value="45">Pizzicato Strings</option><option value="46">Orchestral Harp</option><option value="47">Timpani</option></optgroup>
+    <optgroup label="Ensemble"><option value="48">String Ensemble 1</option><option value="49">String Ensemble 2</option><option value="50">Synth Strings 1</option><option value="51">Synth Strings 2</option><option value="52">Choir Aahs</option><option value="53">Voice Oohs</option><option value="54">Synth Voice</option><option value="55">Orchestra Hit</option></optgroup>
+    <optgroup label="Brass"><option value="56">Trumpet</option><option value="57">Trombone</option><option value="58">Tuba</option><option value="59">Muted Trumpet</option><option value="60">French Horn</option><option value="61">Brass Section</option><option value="62">Synth Brass 1</option><option value="63">Synth Brass 2</option></optgroup>
+    <optgroup label="Reed"><option value="64">Soprano Sax</option><option value="65">Alto Sax</option><option value="66">Tenor Sax</option><option value="67">Baritone Sax</option><option value="68">Oboe</option><option value="69">English Horn</option><option value="70">Bassoon</option><option value="71">Clarinet</option></optgroup>
+    <optgroup label="Pipe"><option value="72">Piccolo</option><option value="73">Flute</option><option value="74">Recorder</option><option value="75">Pan Flute</option><option value="76">Blown Bottle</option><option value="77">Shakuhachi</option><option value="78">Whistle</option><option value="79">Ocarina</option></optgroup>
+    <optgroup label="Synth Lead"><option value="80">Lead 1 (square)</option><option value="81">Lead 2 (sawtooth)</option><option value="82">Lead 3 (calliope)</option><option value="83">Lead 4 (chiff)</option><option value="84">Lead 5 (charang)</option><option value="85">Lead 6 (voice)</option><option value="86">Lead 7 (fifths)</option><option value="87">Lead 8 (bass+lead)</option></optgroup>
+    <optgroup label="Synth Pad"><option value="88">Pad 1 (new age)</option><option value="89">Pad 2 (warm)</option><option value="90">Pad 3 (polysynth)</option><option value="91">Pad 4 (choir)</option><option value="92">Pad 5 (bowed)</option><option value="93">Pad 6 (metallic)</option><option value="94">Pad 7 (halo)</option><option value="95">Pad 8 (sweep)</option></optgroup>
+    <optgroup label="Synth Effects"><option value="96">FX 1 (rain)</option><option value="97">FX 2 (soundtrack)</option><option value="98">FX 3 (crystal)</option><option value="99">FX 4 (atmosphere)</option><option value="100">FX 5 (brightness)</option><option value="101">FX 6 (goblins)</option><option value="102">FX 7 (echoes)</option><option value="103">FX 8 (sci-fi)</option></optgroup>
+    <optgroup label="Ethnic"><option value="104">Sitar</option><option value="105">Banjo</option><option value="106">Shamisen</option><option value="107">Koto</option><option value="108">Kalimba</option><option value="109">Bag Pipe</option><option value="110">Fiddle</option><option value="111">Shanai</option></optgroup>
+    <optgroup label="Percussive"><option value="112">Tinkle Bell</option><option value="113">Agogo</option><option value="114">Steel Drums</option><option value="115">Woodblock</option><option value="116">Taiko Drum</option><option value="117">Melodic Tom</option><option value="118">Synth Drum</option><option value="119">Reverse Cymbal</option></optgroup>
+    <optgroup label="Sound Effects"><option value="120">Guitar Fret Noise</option><option value="121">Breath Noise</option><option value="122">Seashore</option><option value="123">Bird Tweet</option><option value="124">Telephone Ring</option><option value="125">Helicopter</option><option value="126">Applause</option><option value="127">Gunshot</option></optgroup>
+  </select>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════
+   ANIMATED BACKGROUND
+═══════════════════════════════════════════════════════ */
+const bgCanvas = document.getElementById('bgCanvas');
+const bgCtx = bgCanvas.getContext('2d');
+
+const bgPoints =[];
+const NUM_POINTS = 40;
+const LINE_DIST = 200;
+const BG_COLORS =[
+  'rgba(124,92,191,', 'rgba(80,160,220,', 'rgba(220,80,140,',
+  'rgba(60,200,170,', 'rgba(200,140,60,', 'rgba(180,80,220,',
+];
+
+function resizeBg() {
+  bgCanvas.width = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeBg);
+resizeBg();
+
+for (let i = 0; i < NUM_POINTS; i++) {
+  bgPoints.push({
+    x: Math.random() * bgCanvas.width,
+    y: Math.random() * bgCanvas.height,
+    vx: (Math.random() - 0.5) * 0.6,
+    vy: (Math.random() - 0.5) * 0.6,
+    color: BG_COLORS[Math.floor(Math.random() * BG_COLORS.length)],
+  });
+}
+
+function animateBg() {
+  bgCtx.fillStyle = 'rgba(10,10,18,0.12)';
+  bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+  for (const p of bgPoints) {
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.x < 0 || p.x > bgCanvas.width)  p.vx *= -1;
+    if (p.y < 0 || p.y > bgCanvas.height) p.vy *= -1;
+  }
+
+  for (let i = 0; i < bgPoints.length; i++) {
+    for (let j = i + 1; j < bgPoints.length; j++) {
+      const dx = bgPoints[i].x - bgPoints[j].x;
+      const dy = bgPoints[i].y - bgPoints[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < LINE_DIST) {
+        const alpha = (1 - dist / LINE_DIST) * 0.35;
+        bgCtx.strokeStyle = bgPoints[i].color + alpha + ')';
+        bgCtx.lineWidth = 1;
+        bgCtx.beginPath();
+        bgCtx.moveTo(bgPoints[i].x, bgPoints[i].y);
+        bgCtx.lineTo(bgPoints[j].x, bgPoints[j].y);
+        bgCtx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(animateBg);
+}
+// Clear once fully then start
+bgCtx.fillStyle = '#0a0a12';
+bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+animateBg();
+
+/* ═══════════════════════════════════════════════════════
+   CONSTANTS & GENERATOR LOGIC
+═══════════════════════════════════════════════════════ */
+const TICKS_PER_BEAT = 480;
+
+const SCALES = {
+  major:[0,2,4,5,7,9,11],
+  naturalMinor:[0,2,3,5,7,8,10],
+  harmonicMinor:[0,2,3,5,7,8,11],
+  melodicMinor:[0,2,3,5,7,9,11],
+  dorian:[0,2,3,5,7,9,10],
+  phrygian:[0,1,3,5,7,8,10],
+  lydian:[0,2,4,6,7,9,11],
+  mixolydian:[0,2,4,5,7,9,10],
+  locrian:[0,1,3,5,6,8,10],
+  pentMajor:[0,2,4,7,9],
+  pentMinor:     [0,3,5,7,10],
+  blues:[0,3,5,6,7,10],
+  wholeTone:[0,2,4,6,8,10],
+  chromatic:[0,1,2,3,4,5,6,7,8,9,10,11],
+};
+
+const KEY_SEMITONES = { 'C':0,'C#':1,'D':2,'D#':3,'E':4,'F':5,'F#':6,'G':7,'G#':8,'A':9,'A#':10,'B':11 };
+
+/* 
+  NEW: ADVANCED SYNTHESIS FAMILIES
+  Using FM, AM, and Fat/PWM synthesis to create highly realistic and rich textures.
+*/
+const SYNTH_FAMILIES =[
+  // 0-7 Piano (FM Electric/Acoustic blend)
+  { engine: 'fm', vol: -6, config: { harmonicity: 1, modulationIndex: 1.5, oscillator: { type: 'triangle' }, modulation: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.4, sustain: 0.3, release: 1.2 }, modulationEnvelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.5 } } },
+  // 8-15 Chromatic Percussion (Bells / Marimba)
+  { engine: 'fm', vol: -8, config: { harmonicity: 3.14, modulationIndex: 3, oscillator: { type: 'sine' }, modulation: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.6, sustain: 0.1, release: 1.5 }, modulationEnvelope: { attack: 0.005, decay: 0.4, sustain: 0, release: 1 } } },
+  // 16-23 Organ
+  { engine: 'standard', vol: -8, vibrato: 0.15, config: { oscillator: { type: 'fatsine', count: 3, spread: 15 }, envelope: { attack: 0.05, decay: 0.1, sustain: 0.9, release: 0.4 } } },
+  // 24-31 Guitar (Plucked PWM)
+  { engine: 'standard', vol: -6, config: { oscillator: { type: 'pwm', modulationFrequency: 0.2 }, envelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.8 } } },
+  // 32-39 Bass
+  { engine: 'fm', vol: -5, config: { harmonicity: 1.5, modulationIndex: 2, oscillator: { type: 'sine' }, modulation: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.3, sustain: 0.4, release: 0.5 }, modulationEnvelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 } } },
+  // 40-47 Strings (Massive Detuned Ensemble)
+  { engine: 'standard', vol: -10, vibrato: 0.1, chorus: true, config: { oscillator: { type: 'fatsawtooth', count: 3, spread: 20 }, envelope: { attack: 0.3, decay: 0.2, sustain: 0.8, release: 1.5 } } },
+  // 48-55 Ensemble (Warm Pads / Synth Strings)
+  { engine: 'standard', vol: -10, chorus: true, config: { oscillator: { type: 'fatsquare', count: 3, spread: 25 }, envelope: { attack: 0.2, decay: 0.3, sustain: 0.7, release: 1.5 } } },
+  // 56-63 Brass (FM Swell)
+  { engine: 'fm', vol: -8, vibrato: 0.05, config: { harmonicity: 1, modulationIndex: 3, oscillator: { type: 'sawtooth' }, modulation: { type: 'sine' }, envelope: { attack: 0.08, decay: 0.2, sustain: 0.7, release: 0.6 }, modulationEnvelope: { attack: 0.15, decay: 0.1, sustain: 1, release: 0.5 } } },
+  // 64-71 Reed (Sax/Oboe)
+  { engine: 'fm', vol: -8, vibrato: 0.1, config: { harmonicity: 2, modulationIndex: 1.5, oscillator: { type: 'square' }, modulation: { type: 'triangle' }, envelope: { attack: 0.05, decay: 0.2, sustain: 0.6, release: 0.6 }, modulationEnvelope: { attack: 0.05, decay: 0.2, sustain: 0.8, release: 0.4 } } },
+  // 72-79 Pipe (Flute)
+  { engine: 'standard', vol: -6, vibrato: 0.2, config: { oscillator: { type: 'sine' }, envelope: { attack: 0.08, decay: 0.1, sustain: 0.8, release: 0.8 } } },
+  // 80-87 Synth Lead
+  { engine: 'standard', vol: -8, vibrato: 0.15, config: { oscillator: { type: 'fatsawtooth', count: 2, spread: 10 }, envelope: { attack: 0.02, decay: 0.2, sustain: 0.5, release: 0.6 } } },
+  // 88-95 Synth Pad (Evolving Amplitude Modulation)
+  { engine: 'am', vol: -8, chorus: true, config: { harmonicity: 0.5, oscillator: { type: 'sine' }, modulation: { type: 'triangle' }, envelope: { attack: 0.6, decay: 0.5, sustain: 1, release: 2 } } },
+  // 96-103 Synth Effects (Sci-Fi)
+  { engine: 'fm', vol: -10, vibrato: 0.4, config: { harmonicity: 0.2, modulationIndex: 10, oscillator: { type: 'sawtooth' }, modulation: { type: 'square' }, envelope: { attack: 0.2, decay: 0.5, sustain: 0.5, release: 1.5 }, modulationEnvelope: { attack: 0.5, decay: 0.5, sustain: 0.5, release: 1.5 } } },
+  // 104-111 Ethnic (Plucked)
+  { engine: 'fm', vol: -6, config: { harmonicity: 2.5, modulationIndex: 2, oscillator: { type: 'triangle' }, modulation: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.4, sustain: 0.1, release: 0.8 }, modulationEnvelope: { attack: 0.005, decay: 0.2, sustain: 0, release: 0.4 } } },
+  // 112-119 Percussive (Toms/Woodblock)
+  { engine: 'standard', vol: -5, config: { oscillator: { type: 'triangle' }, envelope: { attack: 0.001, decay: 0.15, sustain: 0.0, release: 0.2 } } },
+  // 120-127 Sound Effects
+  { engine: 'am', vol: -8, config: { harmonicity: 1.2, oscillator: { type: 'square' }, modulation: { type: 'sawtooth' }, envelope: { attack: 0.1, decay: 1, sustain: 0.5, release: 1.2 } } }
+];
+
+function getSynthFamily(program) { return SYNTH_FAMILIES[Math.min(15, Math.floor(program / 8))]; }
+
+let currentNotes = null;
+let currentMidi  = null;
+let isPlaying    = false;
+let scheduledPart = null;
+let playStartTime = 0;
+let totalDurationMs = 0;
+let playTimer = null;
+
+const $ = id => document.getElementById(id);
+
+function buildScaleNotes(rootMidi, intervals) {
+  const notes =[];
+  for (let octOffset = -1; octOffset <= 2; octOffset++) {
+    for (const iv of intervals) {
+      const n = rootMidi + iv + octOffset * 12;
+      if (n >= 21 && n <= 108) notes.push(n);
+    }
+  }
+  return [...new Set(notes)].sort((a, b) => a - b);
+}
+
+function nearestIdx(arr, val) {
+  let best = 0;
+  for (let i = 1; i < arr.length; i++) {
+    if (Math.abs(arr[i] - val) < Math.abs(arr[best] - val)) best = i;
+  }
+  return best;
+}
+
+function generateMelody() {
+  const scaleKey  = $('selScale').value;
+  const key       = $('selKey').value;
+  const bars      = parseInt($('numBars').value) || 4;
+  const bpm       = parseInt($('numBpm').value) || 120;
+  const domDiv    = parseInt($('selDuration').value);
+  const octave    = parseInt($('selOctave').value);
+  const arpeggios = $('chkArpeggios').checked;
+  const rests     = $('chkRests').checked;
+  const chords    = $('chkChords').checked;
+
+  const intervals = SCALES[scaleKey] || SCALES.major;
+  const rootMidi  = KEY_SEMITONES[key] + octave * 12 + 12;
+  const scale     = buildScaleNotes(rootMidi, intervals);
+  if (!scale.length) return[];
+
+  const ticksPerNote = Math.round(TICKS_PER_BEAT * 4 / domDiv);
+  const totalBeats = bars * 4;
+  const totalTicks = totalBeats * TICKS_PER_BEAT;
+
+  const notes =[];
+  let curIdx = nearestIdx(scale, rootMidi);
+  let tick = 0;
+
+  const durVariants = [domDiv];
+  if (domDiv >= 4)  durVariants.push(domDiv / 2);
+  if (domDiv <= 8)  durVariants.push(domDiv * 2);
+  durVariants.push(domDiv);
+
+  function getChordTones(baseIdx) {
+    const tones = [scale[baseIdx]];
+    if (baseIdx + 2 < scale.length) tones.push(scale[baseIdx + 2]);
+    if (baseIdx + 4 < scale.length) tones.push(scale[baseIdx + 4]);
+    return tones;
+  }
+
+  let inArpeggio = false, arpNotes =[], arpIdx = 0;
+
+  while (tick < totalTicks) {
+    const div = Math.random() < 0.7 ? domDiv : durVariants[Math.floor(Math.random() * durVariants.length)];
+    const durTicks = Math.round(TICKS_PER_BEAT * 4 / div);
+
+    if (rests && !inArpeggio && Math.random() < 0.12) {
+      tick += durTicks; continue;
+    }
+
+    if (arpeggios && !inArpeggio && Math.random() < 0.15) {
+      inArpeggio = true;
+      const chordRoot = nearestIdx(scale, rootMidi + (intervals[Math.floor(Math.random() * intervals.length)]));
+      arpNotes = getChordTones(Math.max(0, Math.min(scale.length - 5, chordRoot)));
+      if (Math.random() < 0.4) arpNotes.reverse();
+      arpIdx = 0;
+    }
+
+    let pitch;
+    if (inArpeggio) {
+      pitch = arpNotes[arpIdx % arpNotes.length];
+      arpIdx++;
+      if (arpIdx >= arpNotes.length * 2) inArpeggio = false;
+    } else {
+      const r = Math.random();
+      if (r < 0.08) { curIdx = nearestIdx(scale, rootMidi); }
+      else if (r < 0.18) { const leap = (Math.random() < 0.5 ? 1 : -1) * (3 + Math.floor(Math.random() * 2)); curIdx = Math.max(0, Math.min(scale.length - 1, curIdx + leap)); }
+      else if (r < 0.85) { const step = (Math.random() < 0.5 ? 1 : -1) * (1 + (Math.random() < 0.3 ? 1 : 0)); curIdx = Math.max(0, Math.min(scale.length - 1, curIdx + step)); }
+      pitch = scale[curIdx];
+    }
+
+    const beatPos = (tick / TICKS_PER_BEAT) % 4;
+    if ((beatPos === 0 || beatPos === 2) && Math.random() < 0.35) {
+      const chordTones = getChordTones(nearestIdx(scale, rootMidi));
+      pitch = chordTones.reduce((a, b) => Math.abs(a - pitch) < Math.abs(b - pitch) ? a : b);
+      curIdx = nearestIdx(scale, pitch);
+    }
+
+    const velocity = 70 + Math.floor(Math.random() * 35);
+    const noteDur = Math.round(durTicks * (0.75 + Math.random() * 0.2));
+
+    notes.push({ pitch, velocity, startTick: tick, durationTicks: noteDur });
+
+    if (chords && !inArpeggio && Math.random() < 0.3) {
+      const ct = getChordTones(curIdx);
+      for (let i = 1; i < ct.length; i++) {
+        notes.push({ pitch: ct[i], velocity: Math.round(velocity * 0.7), startTick: tick, durationTicks: noteDur });
+      }
+    }
+    tick += durTicks;
+  }
+
+  if (notes.length > 0) {
+    const lastNote = notes[notes.length - 1];
+    const endTick = lastNote.startTick + lastNote.durationTicks + TICKS_PER_BEAT / 4;
+    if (endTick < totalTicks + TICKS_PER_BEAT) {
+      notes.push({ pitch: rootMidi, velocity: 85, startTick: Math.min(endTick, totalTicks), durationTicks: TICKS_PER_BEAT * 2 });
+    }
+  }
+
+  return notes;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MIDI WRITER
+═══════════════════════════════════════════════════════ */
+function toVarLen(v) {
+  const b =[]; b.unshift(v & 0x7F); v >>>= 7;
+  while (v > 0) { b.unshift((v & 0x7F) | 0x80); v >>>= 7; }
+  return b;
+}
+const u32 = v =>[(v>>>24)&0xFF,(v>>>16)&0xFF,(v>>>8)&0xFF,v&0xFF];
+const u16 = v =>[(v>>>8)&0xFF, v&0xFF];
+
+function buildMidi(notes, bpm, program) {
+  const tempo = Math.round(60_000_000 / bpm);
+  const events =[];
+  for (const n of notes) {
+    events.push({ tick: n.startTick, type: 0x90, data: [n.pitch, n.velocity] });
+    events.push({ tick: n.startTick + n.durationTicks, type: 0x80, data:[n.pitch, 0] });
+  }
+  events.sort((a, b) => a.tick - b.tick || (a.type === 0x80 ? -1 : 1));
+
+  const td =[];
+  const push = (...b) => b.forEach(x => td.push(x));
+  push(0x00,0xFF,0x51,0x03,(tempo>>>16)&0xFF,(tempo>>>8)&0xFF,tempo&0xFF);
+  push(0x00,0xFF,0x58,0x04,0x04,0x02,0x18,0x08);
+  push(0x00,0xC0,program & 0x7F);
+  const name = Array.from('MIDIGEN Melody', c => c.charCodeAt(0));
+  push(0x00,0xFF,0x03,name.length,...name);
+
+  let lastTick = 0;
+  for (const ev of events) {
+    push(...toVarLen(ev.tick - lastTick), ev.type, ...ev.data);
+    lastTick = ev.tick;
+  }
+  push(0x00,0xFF,0x2F,0x00);
+
+  return new Uint8Array([
+    0x4D,0x54,0x68,0x64,...u32(6),...u16(0),...u16(1),...u16(TICKS_PER_BEAT),
+    0x4D,0x54,0x72,0x6B,...u32(td.length),...td,
+  ]);
+}
+
+/* 
+/* ═══════════════════════════════════════════════════════
+   MULTI-ENGINE AUDIO GRAPH (UPGRADED)
+═══════════════════════════════════════════════════════ */
+const SYNTH_FAMILIES =[
+  // 0-7 Piano
+  { engine: 'am', vol: -4, reverb: 0.25, chorus: 0.1, config: { harmonicity: 3, oscillator: { type: 'triangle' }, modulation: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.4, sustain: 0.2, release: 1.0 } } },
+  // 8-15 Chromatic Percussion (Bells / Marimba - FM)
+  { engine: 'fm', vol: -6, reverb: 0.35, chorus: 0.0, config: { harmonicity: 3.14, modulationIndex: 3, oscillator: { type: 'sine' }, modulation: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.6, sustain: 0.05, release: 1.5 } } },
+  // 16-23 Organ
+  { engine: 'standard', vol: -6, reverb: 0.2, chorus: 0.3, vibrato: 0.15, config: { oscillator: { type: 'fatsine', count: 3, spread: 15 }, envelope: { attack: 0.05, decay: 0.1, sustain: 0.9, release: 0.4 } } },
+  // 24-31 Guitar (Dynamic Distortion added in buildSynth for Overdrive/Distortion)
+  { engine: 'standard', vol: -5, reverb: 0.15, chorus: 0.1, config: { oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.8 } } },
+  // 32-39 Bass
+  { engine: 'standard', vol: -2, reverb: 0.05, chorus: 0.0, filterFreq: 600, config: { oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.6, release: 0.4 } } },
+  // 40-47 Strings
+  { engine: 'standard', vol: -10, reverb: 0.4, chorus: 0.5, vibrato: 0.1, config: { oscillator: { type: 'fatsawtooth', count: 3, spread: 20 }, envelope: { attack: 0.3, decay: 0.2, sustain: 0.8, release: 1.5 } } },
+  // 48-55 Ensemble
+  { engine: 'standard', vol: -10, reverb: 0.4, chorus: 0.5, config: { oscillator: { type: 'fatsquare', count: 3, spread: 25 }, envelope: { attack: 0.2, decay: 0.3, sustain: 0.7, release: 1.5 } } },
+  // 56-63 Brass (FM Swell)
+  { engine: 'fm', vol: -8, reverb: 0.25, chorus: 0.1, vibrato: 0.05, config: { harmonicity: 1, modulationIndex: 2, oscillator: { type: 'sawtooth' }, modulation: { type: 'sine' }, envelope: { attack: 0.08, decay: 0.2, sustain: 0.7, release: 0.6 } } },
+  // 64-71 Reed (Sax/Oboe)
+  { engine: 'fm', vol: -8, reverb: 0.2, chorus: 0.1, vibrato: 0.1, config: { harmonicity: 2, modulationIndex: 1.5, oscillator: { type: 'square' }, modulation: { type: 'triangle' }, envelope: { attack: 0.05, decay: 0.2, sustain: 0.6, release: 0.6 } } },
+  // 72-79 Pipe (Flute)
+  { engine: 'standard', vol: -6, reverb: 0.3, chorus: 0.0, vibrato: 0.2, config: { oscillator: { type: 'sine' }, envelope: { attack: 0.08, decay: 0.1, sustain: 0.8, release: 0.8 } } },
+  // 80-87 Synth Lead
+  { engine: 'standard', vol: -8, reverb: 0.3, chorus: 0.4, vibrato: 0.15, config: { oscillator: { type: 'fatsawtooth', count: 2, spread: 10 }, envelope: { attack: 0.02, decay: 0.2, sustain: 0.5, release: 0.6 } } },
+  // 88-95 Synth Pad
+  { engine: 'am', vol: -8, reverb: 0.5, chorus: 0.6, config: { harmonicity: 0.5, oscillator: { type: 'sine' }, modulation: { type: 'triangle' }, envelope: { attack: 0.6, decay: 0.5, sustain: 1, release: 2 } } },
+  // 96-103 Synth Effects (Sci-Fi)
+  { engine: 'fm', vol: -10, reverb: 0.4, chorus: 0.5, vibrato: 0.4, config: { harmonicity: 0.2, modulationIndex: 10, oscillator: { type: 'sawtooth' }, modulation: { type: 'square' }, envelope: { attack: 0.2, decay: 0.5, sustain: 0.5, release: 1.5 } } },
+  // 104-111 Ethnic (Plucked FM)
+  { engine: 'fm', vol: -6, reverb: 0.2, chorus: 0.1, config: { harmonicity: 2.5, modulationIndex: 2, oscillator: { type: 'triangle' }, modulation: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.4, sustain: 0.1, release: 0.8 } } },
+  // 112-119 Percussive (Toms/Woodblock)
+  { engine: 'standard', vol: -5, reverb: 0.1, chorus: 0.0, config: { oscillator: { type: 'triangle' }, envelope: { attack: 0.001, decay: 0.15, sustain: 0.0, release: 0.2 } } },
+  // 120-127 Sound Effects
+  { engine: 'am', vol: -8, reverb: 0.4, chorus: 0.2, config: { harmonicity: 1.2, oscillator: { type: 'square' }, modulation: { type: 'sawtooth' }, envelope: { attack: 0.1, decay: 1, sustain: 0.5, release: 1.2 } } }
+];
+
+function getSynthFamily(program) { return SYNTH_FAMILIES[Math.min(15, Math.floor(program / 8))]; }
+
+let synthState = null; 
+let scheduledPart = null;
+
+// Cleanly destroy previous synth to prevent hanging notes and effect bleeding
+function disposeSynth() {
+  if (scheduledPart) { try { scheduledPart.dispose(); } catch(e) {} scheduledPart = null; }
+  if (synthState) {
+    try { synthState.poly.dispose(); } catch(e) {}
+    synthState.nodes.forEach(n => { try { n.dispose(); } catch(e) {} });
+    synthState = null;
+  }
+}
+
+// Dynamically construct a fresh audio graph per playback
+function buildSynth(program, minNoteDurSec) {
+  disposeSynth();
+  const fam = getSynthFamily(program);
+  const nodes =[];
+
+  // 1. Synchronous Reverb (JCReverb avoids async Tone.Reverb silence bugs)
+  const reverb = new Tone.JCReverb(0.4);
+  reverb.wet.value = Math.max(0, fam.reverb || 0.1);
+  reverb.toDestination();
+  nodes.push(reverb);
+  let tail = reverb;
+
+  // 2. Filter (Optional - for Bass)
+  if (fam.filterFreq) {
+    const filter = new Tone.Filter({ frequency: fam.filterFreq, type: 'lowpass' });
+    filter.connect(tail);
+    nodes.push(filter);
+    tail = filter;
+  }
+
+  // 3. Chorus
+  if (fam.chorus > 0) {
+    const chorus = new Tone.Chorus(4, 2.5, 0.5);
+    chorus.wet.value = fam.chorus;
+    chorus.start();
+    chorus.connect(tail);
+    nodes.push(chorus);
+    tail = chorus;
+  }
+
+  // 4. Distortion (Hardcoded check for GM Distortion/Overdrive Guitars)
+  if (program >= 29 && program <= 30) {
+    const dist = new Tone.Distortion(0.6);
+    dist.connect(tail);
+    nodes.push(dist);
+    tail = dist;
+  }
+
+  // 5. Vibrato
+  if (fam.vibrato > 0) {
+    const vibrato = new Tone.Vibrato(5, fam.vibrato);
+    vibrato.connect(tail);
+    nodes.push(vibrato);
+    tail = vibrato;
+  }
+
+  // 6. ADSR Clamping 
+  // CRITICAL FIX: Forces slow pads to play fast 16th/32nd notes without staying silent
+  let env = { ...fam.config.envelope };
+  if (minNoteDurSec > 0) {
+    env.attack  = Math.min(env.attack,  minNoteDurSec * 0.45);
+    env.decay   = Math.min(env.decay,   minNoteDurSec * 0.35);
+    env.release = Math.min(env.release, Math.max(0.05, minNoteDurSec * 0.8));
+  }
+  
+  const synthConfig = { ...fam.config, envelope: env };
+  let engineType = Tone.Synth;
+  if (fam.engine === 'fm') engineType = Tone.FMSynth;
+  if (fam.engine === 'am') engineType = Tone.AMSynth;
+
+  // 7. PolySynth Instantiation
+  const poly = new Tone.PolySynth(engineType, synthConfig);
+  poly.volume.value = fam.vol;
+  poly.connect(tail);
+
+  synthState = { poly, nodes, reverb };
+  return poly;
+}
+
+function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+/* ═══════════════════════════════════════════════════════
+   PLAYER CONTROLS
+═══════════════════════════════════════════════════════ */
+function status(msg, cls='') { $('status').textContent = msg; $('status').className = cls; }
+
+function generate() {
+  const notes = generateMelody();
+  if (!notes.length) { status('No notes generated', 'err'); return; }
+
+  currentNotes = notes;
+  const bpm = parseInt($('numBpm').value) || 120;
+  const program = parseInt($('selInstrument').value);
+  currentMidi = buildMidi(notes, bpm, program);
+
+  const maxTick = Math.max(...notes.map(n => n.startTick + n.durationTicks));
+  totalDurationMs = (maxTick / TICKS_PER_BEAT / bpm * 60) * 1000;
+
+  $('btnPlay').disabled = false;
+  $('btnDownload').disabled = false;
+  $('progressSlider').disabled = false;
+  $('progressSlider').value = 0;
+  $('timeDisplay').textContent = '0:00 / ' + formatTime(totalDurationMs / 1000);
+
+  status(`Generated ${notes.length} notes — ${$('selScale').options[$('selScale').selectedIndex].text} in ${$('selKey').value}`, 'ok');
+}
+
+async function togglePlay() {
+  if (!currentNotes) return;
+  
+  if (isPlaying) { 
+    stopPlayback(); 
+    return; 
+  }
+
+  $('btnPlay').innerHTML = '&#10074;&#10074;';
+  $('btnPlay').classList.add('active');
+  status('');
+
+  try {
+    await Tone.start();
+    if (Tone.context.state !== 'running') await Tone.context.resume();
+  } catch(e) {
+    status('Audio error — click play again', 'err');
+    $('btnPlay').innerHTML = '&#9654;';
+    $('btnPlay').classList.remove('active');
+    return;
+  }
+
+  const bpm = parseInt($('numBpm').value) || 120;
+  const program = parseInt($('selInstrument').value);
+
+  Tone.Transport.stop();
+  Tone.Transport.cancel(0);
+  Tone.Transport.position = 0;
+  Tone.Transport.bpm.value = bpm;
+
+  const secPerTick = 60 / (bpm * TICKS_PER_BEAT);
+  const toneNotes = currentNotes.map(n => ({
+    time: n.startTick * secPerTick,
+    freq: midiToFreq(n.pitch),
+    dur: Math.max(0.02, n.durationTicks * secPerTick),
+    vel: n.velocity / 127,
+  }));
+
+  // Find the shortest note to clamp ADSR envelopes
+  const minDurSec = toneNotes.length ? Math.min(...toneNotes.map(n => n.dur)) : 0.1;
+  const polySynth = buildSynth(program, minDurSec);
+  
+  scheduledPart = new Tone.Part((time, ev) => {
+    try { polySynth.triggerAttackRelease(ev.freq, ev.dur, time, ev.vel); } catch(e) {}
+  }, toneNotes);
+  scheduledPart.start(0);
+
+  isPlaying = true;
+  playStartTime = Date.now();
+  Tone.Transport.start();
+
+  clearInterval(playTimer);
+  playTimer = setInterval(() => {
+    const elapsed = Date.now() - playStartTime;
+    const frac = Math.min(1, elapsed / totalDurationMs);
+    $('progressSlider').value = Math.round(frac * 1000);
+    $('timeDisplay').textContent = formatTime(elapsed / 1000) + ' / ' + formatTime(totalDurationMs / 1000);
+    if (frac >= 1) stopPlayback();
+  }, 50);
+}
+
+function stopPlayback() {
+  isPlaying = false;
+  try { 
+    Tone.Transport.stop(); 
+    Tone.Transport.cancel(0); 
+    Tone.Transport.position = 0; 
+  } catch(e) {}
+  
+  disposeSynth(); // Completely erase the audio graph on stop
+
+  clearInterval(playTimer);
+  $('btnPlay').innerHTML = '&#9654;';
+  $('btnPlay').classList.remove('active');
+  $('progressSlider').value = 0;
+  $('timeDisplay').textContent = '0:00 / ' + formatTime(totalDurationMs / 1000);
+}
+
+// ... Rest of the script remains exactly the same starting from here:
+
+function downloadMidi() {
+  if (!currentMidi) return;
+  const key = $('selKey').value;
+  const scale = $('selScale').value;
+  const bpm = $('numBpm').value;
+  const blob = new Blob([currentMidi], { type: 'audio/midi' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `midigen_${key}_${scale}_${bpm}bpm.mid`;
+  a.click();
+  URL.revokeObjectURL(url);
+  status('MIDI file downloaded!', 'ok');
+}
+
+function randomize() {
+  $('selScale').selectedIndex = Math.floor(Math.random() * $('selScale').options.length);
+  $('selKey').selectedIndex = Math.floor(Math.random() * $('selKey').options.length);
+  $('numBars').value = 2 + Math.floor(Math.random() * 7);
+  $('numBpm').value = 60 + Math.floor(Math.random() * 121);
+  $('selDuration').selectedIndex = Math.floor(Math.random() * $('selDuration').options.length);
+  $('selOctave').selectedIndex = Math.floor(Math.random() * $('selOctave').options.length);
+  $('chkArpeggios').checked = Math.random() < 0.4;
+  $('chkRests').checked     = Math.random() < 0.6;
+  $('chkChords').checked    = Math.random() < 0.3;
+  $('selInstrument').selectedIndex = Math.floor(Math.random() * $('selInstrument').options.length);
+  status('Parameters randomized — click Generate MIDI', '');
+}
+
+/* ═══════════════════════════════════════════════════════
+   EVENT LISTENERS
+═══════════════════════════════════════════════════════ */
+$('btnGenerate').addEventListener('click', () => {
+  if (isPlaying) stopPlayback();
+  generate();
+});
+
+$('btnPlay').addEventListener('click', togglePlay);
+$('btnDice').addEventListener('click', randomize);
+$('btnDownload').addEventListener('click', downloadMidi);
+
+$('selInstrument').addEventListener('change', () => {
+  const program = parseInt($('selInstrument').value);
+  
+  if (audioEngineInitialized) { 
+    applyInstrumentParameters(program); 
+  }
+  
+  if (currentNotes) {
+    const bpm = parseInt($('numBpm').value) || 120;
+    currentMidi = buildMidi(currentNotes, bpm, program);
+  }
+});
+</script>
+</body>
+</html>
