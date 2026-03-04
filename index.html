@@ -1064,6 +1064,7 @@ function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 function scheduleNotes(notes, bpm, instrumentName, reverbWet, onDone) {
   Tone.Transport.stop();
   Tone.Transport.cancel();
+  Tone.Transport.position = 0; // rewind — stop() pauses without resetting, so replay would start at end → silence
 
   const poly = buildSynth(instrumentName, reverbWet);
   Tone.Transport.bpm.value = bpm;
@@ -1571,7 +1572,7 @@ async function onPlay() {
 
 function stopPlayback() {
   isPlaying = false;
-  try { Tone.Transport.stop(); } catch(e) {}
+  try { Tone.Transport.stop(); Tone.Transport.position = 0; } catch(e) {}
   disposeSynth();
   clearInterval(playheadTimer);
   $('playhead').style.display = 'none';

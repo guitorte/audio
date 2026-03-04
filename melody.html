@@ -1000,7 +1000,7 @@ async function togglePlay() {
 
 function stopPlayback() {
   isPlaying = false;
-  try { Tone.Transport.stop(); } catch(e) {}
+  try { Tone.Transport.stop(); Tone.Transport.position = 0; } catch(e) {}
   disposeSynth();
   clearInterval(playTimer);
   $('btnPlay').innerHTML = '&#9654;';
