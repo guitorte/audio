@@ -13,6 +13,26 @@ MIDI. Projeto irmão do `audio-restoration-pipeline/`.
 | Fase 3 | Batch sobre todos os stems de uma faixa Demucs + arquivo `.mid` multi-track unificado | ⏳ planejado |
 | Fase 4 | Quantização, transposição, exportação MusicXML | ⏳ planejado |
 
+## Nota sobre Python 3.12 / Colab
+
+basic-pitch 0.4.0 (única release estável, ago/2024) declara suporte só até
+Python 3.11 e, em Linux com `python>=3.11`, puxa `tensorflow<2.15.1` e
+`tflite-runtime` — nenhum dos dois tem wheel para Python 3.12. O Colab agora
+roda Python 3.12, então `pip install basic-pitch` direto **quebra**
+(o resolver do pip backtraca até basic-pitch 0.2.6 e tenta compilar
+numpy 1.23 do source). Ver [issue #188](https://github.com/spotify/basic-pitch/issues/188).
+
+**Workaround usado no notebook:** instalar `basic-pitch --no-deps` e o backend
+**ONNX** (`onnxruntime`, com wheel para Python 3.12). O modelo `nmp.onnx` já
+vem embutido no pacote, e `predict()` escolhe o primeiro backend importável na
+ordem `TF → CoreML → TFLite → ONNX` — sem TF/TFLite instalados, ele usa ONNX
+automaticamente.
+
+```bash
+pip install basic-pitch --no-deps onnxruntime
+pip install -r requirements.txt
+```
+
 ## MVP — uso rápido
 
 1. Abrir `notebooks/Stem_to_MIDI_MVP.ipynb` no Google Colab (badge no topo do
