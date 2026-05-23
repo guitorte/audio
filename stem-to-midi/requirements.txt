@@ -1,7 +1,20 @@
-basic-pitch>=0.4.0
-pretty_midi>=0.2.10
+# Backend ONNX (não puxar TF/TFLite — quebra em Python 3.12 do Colab)
+# Veja spotify/basic-pitch#188
+# Instalação recomendada:
+#   pip install basic-pitch --no-deps onnxruntime
+#   pip install -r requirements.txt
+basic-pitch==0.4.0
+onnxruntime>=1.18
+resampy<0.4.3
 librosa>=0.10.1
+mir_eval>=0.7
+pretty_midi>=0.2.10
+scikit-learn>=1.3
+scipy>=1.10
+typing_extensions>=4.5
 soundfile>=0.12.1
+mido>=1.3.0
 matplotlib>=3.7.0
 numpy>=1.24
-mido>=1.3.0
+flatbuffers
+protobuf
