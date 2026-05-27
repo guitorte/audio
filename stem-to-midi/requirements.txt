@@ -3,6 +3,7 @@
 # Instalação recomendada:
 #   pip install basic-pitch --no-deps onnxruntime
 #   pip install -r requirements.txt
+#   pip install git+https://github.com/xavriley/ADTOF-pytorch.git  # drums
 basic-pitch==0.4.0
 onnxruntime>=1.18
 resampy<0.4.3
@@ -18,3 +19,6 @@ matplotlib>=3.7.0
 numpy>=1.24
 flatbuffers
 protobuf
+# Drums (ADTOF-pytorch): instalar via git, não está em PyPI
+#   pip install git+https://github.com/xavriley/ADTOF-pytorch.git
+# Puxa torch automaticamente.
