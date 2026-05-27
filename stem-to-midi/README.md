@@ -9,7 +9,8 @@ MIDI. Projeto irmão do `audio-restoration-pipeline/`.
 | Fase | Escopo | Estado |
 |---|---|---|
 | **MVP** | 1 stem → 1 arquivo MIDI usando Basic Pitch (universal) | ✅ pronto |
-| Fase 2 | Roteamento por tipo de stem (drums dedicado, piano dedicado) | ⏳ planejado |
+| **Fase 2a** | Engine dedicada para drums (ADTOF-pytorch) + dispatcher por stem_type | ✅ pronto |
+| Fase 2b | Engines dedicadas para piano (Bytedance) e vocals (ROSVOT) | ⏳ planejado |
 | Fase 3 | Batch sobre todos os stems de uma faixa Demucs + arquivo `.mid` multi-track unificado | ⏳ planejado |
 | Fase 4 | Quantização, transposição, exportação MusicXML | ⏳ planejado |
 
@@ -41,29 +42,45 @@ pip install -r requirements.txt
    `/content/drive/MyDrive/stem-to-midi/input/stem.wav` (`.mp3`, `.flac`,
    `.m4a` também funcionam).
 3. Selecionar o `STEM_TYPE` correto na célula 4 (`bass`, `vocals`, `guitar`,
-   `piano` ou `other`).
+   `piano`, `drums` ou `other`).
 4. Rodar as células sequencialmente — o MIDI sai em
    `/content/drive/MyDrive/stem-to-midi/output/stem.mid`.
 
-Os presets de `onset_threshold`, `frame_threshold`, `minimum_note_length` e
-faixa de frequência são ajustados por tipo de stem (ver `modules/transcribe.py`
-→ `STEM_PRESETS`).
+O dispatcher escolhe a engine automaticamente:
 
-> **Aviso:** este MVP usa Basic Pitch, que **não transcreve drums**. Para o
-> stem `drums` use a Fase 2 (ADTOF).
+- `drums` → **ADTOF-pytorch** (kick/snare/hat/tom/cymbals, GM drum map em
+  canal 10)
+- demais → **Basic Pitch** com preset por instrumento (`onset_threshold`,
+  `frame_threshold`, faixa de frequência) — ver `modules/transcribe.py` →
+  `STEM_PRESETS`.
+
+### Nota sobre licenças
+
+- **Basic Pitch:** Apache-2.0 (permissivo)
+- **ADTOF-pytorch:** porte PyTorch de [ADTOF](https://github.com/MZehren/ADTOF)
+  (AGPL-3.0). O fork [xavriley/ADTOF-pytorch](https://github.com/xavriley/ADTOF-pytorch)
+  não publicou um LICENSE explícito — o termo aplicável é, por inferência,
+  o AGPL do upstream. Use o stem `drums` somente se aceita a AGPL.
 
 ## Uso via Python (fora do Colab)
 
 ```python
 from modules import stem_to_midi
 
+# Pitched: usa Basic Pitch com preset 'bass'
 result = stem_to_midi(
     input_path='/path/to/bass.wav',
     output_path='/path/to/bass.mid',
-    minimum_frequency=30.0,
-    maximum_frequency=350.0,
+    stem_type='bass',
 )
-print(f'{result.n_notes} notas em {result.duration_s:.1f}s → {result.midi_path}')
+print(f'{result.engine}: {result.n_notes} notas em {result.duration_s:.1f}s')
+
+# Drums: dispatcha para ADTOF-pytorch
+result = stem_to_midi(
+    input_path='/path/to/drums.wav',
+    output_path='/path/to/drums.mid',
+    stem_type='drums',
+)
 ```
 
 ## Levantamento técnico — ferramentas Audio→MIDI (maio/2026)
