@@ -11,7 +11,7 @@ MIDI. Projeto irmão do `audio-restoration-pipeline/`.
 | **MVP** | 1 stem → 1 arquivo MIDI usando Basic Pitch (universal) | ✅ pronto |
 | **Fase 2a** | Engine dedicada para drums (ADTOF-pytorch) + dispatcher por stem_type | ✅ pronto |
 | Fase 2b | Engines dedicadas para piano (Bytedance) e vocals (ROSVOT) | ⏳ planejado |
-| Fase 3 | Batch sobre todos os stems de uma faixa Demucs + arquivo `.mid` multi-track unificado | ⏳ planejado |
+| **Fase 3** | Batch sobre todos os stems de uma faixa Demucs + arquivo `.mid` multi-track unificado | ✅ pronto |
 | Fase 4 | Quantização, transposição, exportação MusicXML | ⏳ planejado |
 
 ## Nota sobre Python 3.12 / Colab
@@ -83,6 +83,35 @@ result = stem_to_midi(
 )
 ```
 
+## Batch — múltiplos stems → MIDI multi-track (Fase 3)
+
+`batch_stems_to_midi()` aceita uma pasta de stems (layout do Demucs:
+arquivos `vocals.wav`, `drums.wav`, `bass.wav`, `guitar.wav`, `piano.wav`,
+`other.wav`), transcreve cada um com a engine certa e consolida tudo em
+um único MIDI multi-track.
+
+```python
+from modules import batch_stems_to_midi
+
+result = batch_stems_to_midi(
+    stems_dir='/path/to/demucs/separated/htdemucs_6s/song',
+    output_path='/path/to/output/song.mid',
+)
+print(f'{len(result.stem_results)} stems, {result.total_notes} notas, '
+      f'{result.duration_s:.1f}s')
+for stem_type, r in result.stem_results.items():
+    print(f'  {stem_type:8s} {r.engine:14s} {r.n_notes:5d} notas')
+```
+
+Produz, ao lado de `output/song.mid`, um arquivo `<stem>.mid` por stem
+processado (útil para edição isolada em DAW). Atribui um GM program por
+faixa (`vocals`=53 Voice Oohs, `bass`=33 Electric Bass, `guitar`=27
+Clean Guitar, `piano`=0 Acoustic Grand, `other`=0 Acoustic Grand,
+`drums`=canal 10). Nomes não-padronizados podem ser remapeados via
+`stem_types={'lead_vox': 'vocals'}`.
+
+Notebook Colab dedicado: `notebooks/Stem_to_MIDI_Batch.ipynb`.
+
 ## Levantamento técnico — ferramentas Audio→MIDI (maio/2026)
 
 A pesquisa abaixo embasou a escolha do Basic Pitch como engine do MVP e o
@@ -146,9 +175,10 @@ stem-to-midi/
 ├── requirements.txt
 ├── modules/
 │   ├── __init__.py
-│   └── transcribe.py                      # stem_to_midi() + STEM_PRESETS
+│   └── transcribe.py                      # stem_to_midi() + batch_stems_to_midi()
 └── notebooks/
-    └── Stem_to_MIDI_MVP.ipynb             # notebook MVP (Colab)
+    ├── Stem_to_MIDI_MVP.ipynb             # 1 stem → 1 MIDI
+    └── Stem_to_MIDI_Batch.ipynb           # N stems Demucs → 1 MIDI multi-track
 ```
 
 ## Referências
