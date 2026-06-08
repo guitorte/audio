@@ -30,11 +30,25 @@ Tudo cai em `<output_root>/<track>/`:
 
 ```
 <track>/
-├── stems/        vocals.wav, drums.wav, bass.wav, guitar.wav, piano.wav, other.wav
+├── stems/        vocals.wav, drums.wav, ...   (separados pelo Demucs)
+├── stems_clean/  vocals.wav, drums.wav, ...   (mono + denoise + normalize; transcritos)
 ├── midi/         vocals.mid, drums.mid, ...   (um .mid por stem, p/ editar na DAW)
 ├── analysis/     <stem>_pianoroll.png + <stem>.txt   (imagem + texto p/ IA)
 └── <track>.mid   MIDI multi-track consolidado
 ```
+
+## Limpeza dos stems (do `Stems_4`)
+
+Antes de transcrever, cada stem passa pela limpeza do caderno `Stems_4` (ligada
+por padrão, `clean_stems=True`):
+
+1. **mono true-mid** — down-mix `(L + R) / 2` (não descarta canal);
+2. **denoise leve** — `noisereduce` com `prop_decrease=0.15`;
+3. **normalização segura** — pico em `0.90`.
+
+Os stems crus ficam em `stems/` e os limpos (que são os efetivamente
+transcritos) em `stems_clean/`. Desligue com `clean_stems=False` (ou `--no-clean`
+na CLI) para transcrever o áudio cru do Demucs.
 
 ## Escolher a música
 
@@ -108,6 +122,8 @@ pip install git+https://github.com/xavriley/ADTOF-pytorch.git   # bateria
 python run.py "minha-musica.mp3" -o output/
 # qualidade maior (mais lento), igual ao notebook Stems_4:
 python run.py "minha-musica.mp3" -o output/ --shifts 5 --overlap 0.75
+# sem a limpeza mono/denoise (transcreve o áudio cru do Demucs):
+python run.py "minha-musica.mp3" -o output/ --no-clean
 ```
 
 ## Uso via Python
@@ -163,6 +179,7 @@ music-to-midi/
 ├── modules/
 │   ├── __init__.py
 │   ├── separate.py                         # Demucs: música → stems
+│   ├── cleanup.py                          # mono + denoise + normalize (do Stems_4)
 │   ├── transcribe.py                       # 1 stem → MIDI (Basic Pitch / ADTOF)
 │   ├── batch.py                            # stems → MIDI multi-track
 │   ├── analyze.py                          # piano roll PNG + MIDI-TEXT (+ text_to_midi)

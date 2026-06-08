@@ -35,6 +35,8 @@ def main(argv=None) -> int:
                         help="Write stems as mp3 instead of wav")
     parser.add_argument("--force-separation", action="store_true",
                         help="Re-run Demucs even if stems already exist")
+    parser.add_argument("--no-clean", action="store_true",
+                        help="Skip stem cleanup (mono/denoise/normalize) before transcribing")
     parser.add_argument("--no-analysis", action="store_true",
                         help="Skip piano-roll PNG + MIDI-TEXT generation")
     args = parser.parse_args(argv)
@@ -50,6 +52,7 @@ def main(argv=None) -> int:
         device=args.device,
         mp3_stems=args.mp3_stems,
         skip_separation_if_exists=not args.force_separation,
+        clean_stems=not args.no_clean,
         write_analysis=not args.no_analysis,
     )
     dt = time.time() - t0
