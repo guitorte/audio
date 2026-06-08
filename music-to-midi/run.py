@@ -37,6 +37,8 @@ def main(argv=None) -> int:
                         help="Re-run Demucs even if stems already exist")
     parser.add_argument("--no-clean", action="store_true",
                         help="Skip stem cleanup (mono/denoise/normalize) before transcribing")
+    parser.add_argument("--no-instrumental", action="store_true",
+                        help="Skip the vocals-free instrumental MIDI")
     parser.add_argument("--no-analysis", action="store_true",
                         help="Skip piano-roll PNG + MIDI-TEXT generation")
     args = parser.parse_args(argv)
@@ -53,6 +55,7 @@ def main(argv=None) -> int:
         mp3_stems=args.mp3_stems,
         skip_separation_if_exists=not args.force_separation,
         clean_stems=not args.no_clean,
+        write_instrumental=not args.no_instrumental,
         write_analysis=not args.no_analysis,
     )
     dt = time.time() - t0
@@ -66,6 +69,8 @@ def main(argv=None) -> int:
     print(f"Total de notas    : {tr.total_notes}")
     print(f"Duração do MIDI   : {tr.duration_s:.1f}s")
     print(f"MIDI consolidado  : {tr.midi_path}")
+    if tr.instrumental_path:
+        print(f"MIDI instrumental : {tr.instrumental_path}")
     if result.analysis_dir:
         print(f"Análise (PNG+TXT) : {result.analysis_dir}")
     print()

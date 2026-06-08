@@ -50,6 +50,7 @@ def song_to_midi(
     skip_separation_if_exists: bool = True,
     clean_stems: bool = True,
     clean_prop_decrease: float = 0.15,
+    write_instrumental: bool = True,
     write_analysis: bool = True,
     quiet: bool = False,
 ) -> PipelineResult:
@@ -130,6 +131,7 @@ def song_to_midi(
         merged_midi,
         stem_types=stem_types,
         per_stem_dir=midi_dir,
+        write_instrumental=write_instrumental,
         quiet=quiet,
     )
 

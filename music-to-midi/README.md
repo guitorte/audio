@@ -34,8 +34,13 @@ Tudo cai em `<output_root>/<track>/`:
 ├── stems_clean/  vocals.wav, drums.wav, ...   (mono + denoise + normalize; transcritos)
 ├── midi/         vocals.mid, drums.mid, ...   (um .mid por stem, p/ editar na DAW)
 ├── analysis/     <stem>_pianoroll.png + <stem>.txt   (imagem + texto p/ IA)
-└── <track>.mid   MIDI multi-track consolidado
+├── <track>.mid              MIDI multi-track consolidado
+└── <track>_instrumental.mid mesmo MIDI, sem a faixa de vocais
 ```
+
+O `<track>_instrumental.mid` é gerado automaticamente sempre que houver um stem
+`vocals` e ao menos uma faixa não-vocal (desligue com `write_instrumental=False`
+ou `--no-instrumental`).
 
 ## Limpeza dos stems (do `Stems_4`)
 
