@@ -1,0 +1,27 @@
+# music-to-midi — unified song → stems → MIDI workflow
+#
+# NOTE on Colab / Python 3.12: basic-pitch 0.4.0 pulls tensorflow<2.15.1 /
+# tflite-runtime, which have no 3.12 wheel. Install it with `--no-deps` and the
+# ONNX backend instead (see README + notebook). The pin below is for local use
+# on Python <= 3.11; on 3.12 use the notebook's install cell.
+
+# --- separation ---
+demucs>=4.0.0
+
+# --- transcription (pitched) ---
+basic-pitch>=0.4.0          # on Py3.12 install as: basic-pitch --no-deps onnxruntime
+onnxruntime>=1.17.0
+
+# --- transcription (drums) ---
+# ADTOF-pytorch is GitHub-only:
+#   pip install git+https://github.com/xavriley/ADTOF-pytorch.git
+
+# --- shared audio/MIDI stack ---
+librosa>=0.10
+soundfile>=0.12
+pretty_midi>=0.2.10
+mido>=1.3
+numpy>=1.23
+scipy>=1.10
+matplotlib>=3.7
+noisereduce>=3.0
