@@ -11,6 +11,7 @@ from .analyze import (
     write_track_analysis,
 )
 from .batch import BatchResult, batch_stems_to_midi
+from .cleanup import clean_stem, clean_stems_folder
 from .pipeline import PipelineResult, song_to_midi
 from .separate import (
     DEMUCS_MODELS,
@@ -44,4 +45,6 @@ __all__ = [
     "midi_to_text",
     "text_to_midi",
     "write_track_analysis",
+    "clean_stem",
+    "clean_stems_folder",
 ]

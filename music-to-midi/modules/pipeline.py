@@ -29,6 +29,7 @@ class PipelineResult:
     merged_midi: str
     separation: SeparationResult
     transcription: BatchResult
+    clean_stems_dir: Optional[str] = None
     analysis_dir: Optional[str] = None
     analysis: Optional[dict] = None  # {'piano_rolls': {...}, 'texts': {...}}
 
@@ -47,6 +48,9 @@ def song_to_midi(
     device: Optional[str] = None,
     mp3_stems: bool = False,
     skip_separation_if_exists: bool = True,
+    clean_stems: bool = True,
+    clean_prop_decrease: float = 0.15,
+    write_instrumental: bool = True,
     write_analysis: bool = True,
     quiet: bool = False,
 ) -> PipelineResult:
@@ -54,7 +58,10 @@ def song_to_midi(
 
     Output is organised under ``<output_root>/<track>/`` (see module docstring).
     Set ``skip_separation_if_exists`` to reuse stems already separated in a
-    previous run. ``stem_types`` remaps non-standard stem filenames.
+    previous run. ``stem_types`` remaps non-standard stem filenames. When
+    ``clean_stems`` is on, each stem is mono-downmixed + lightly denoised +
+    peak-normalised (the ``Stems_4`` cleanup) into ``stems_clean/`` and those
+    cleaned files are what gets transcribed.
     """
     if not os.path.exists(song_path):
         raise FileNotFoundError(f"Song not found: {song_path}")
@@ -99,18 +106,36 @@ def song_to_midi(
             quiet=quiet,
         )
 
-    # --- Stage 2: transcription ---------------------------------------------
+    # --- Stage 2: optional cleanup (mono + denoise + normalize) -------------
+    transcribe_dir = stems_dir
+    clean_dir = None
+    if clean_stems:
+        from .cleanup import clean_stems_folder
+
+        clean_dir = os.path.join(track_dir, "stems_clean")
+        if not quiet:
+            print(f"[pipeline] limpando stems (mono/denoise/normalize) -> {clean_dir}")
+        clean_stems_folder(
+            stems_dir,
+            clean_dir,
+            prop_decrease=clean_prop_decrease,
+            quiet=quiet,
+        )
+        transcribe_dir = clean_dir
+
+    # --- Stage 3: transcription ---------------------------------------------
     if not quiet:
         print(f"[pipeline] transcrevendo {len(separation.stems)} stems -> MIDI ...")
     transcription = batch_stems_to_midi(
-        stems_dir,
+        transcribe_dir,
         merged_midi,
         stem_types=stem_types,
         per_stem_dir=midi_dir,
+        write_instrumental=write_instrumental,
         quiet=quiet,
     )
 
-    # --- Stage 3: analysis artefacts (piano rolls + AI-readable text) -------
+    # --- Stage 4: analysis artefacts (piano rolls + AI-readable text) -------
     analysis_dir = os.path.join(track_dir, "analysis")
     analysis = None
     if write_analysis:
@@ -133,6 +158,7 @@ def song_to_midi(
         merged_midi=merged_midi,
         separation=separation,
         transcription=transcription,
+        clean_stems_dir=clean_dir,
         analysis_dir=analysis_dir if write_analysis else None,
         analysis=analysis,
     )

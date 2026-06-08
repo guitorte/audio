@@ -27,6 +27,8 @@ class BatchResult:
     stem_results: Dict[str, TranscriptionResult] = field(default_factory=dict)
     total_notes: int = 0
     duration_s: float = 0.0
+    instrumental_path: Optional[str] = None
+    instrumental_midi: Optional["pretty_midi.PrettyMIDI"] = None  # noqa: F821
 
 
 def _merge_into(merged, result: TranscriptionResult, stem_type: str) -> None:
@@ -54,6 +56,7 @@ def batch_stems_to_midi(
     *,
     stem_types: Optional[Dict[str, str]] = None,
     per_stem_dir: Optional[str] = None,
+    write_instrumental: bool = True,
     quiet: bool = False,
 ) -> BatchResult:
     """Transcribe all stems in ``stems_dir`` into one multi-track MIDI.
@@ -62,6 +65,10 @@ def batch_stems_to_midi(
     filenames (basename → stem type), e.g. ``{'Kim_Vocal_2': 'vocals'}``.
     Per-stem ``.mid`` files land in ``per_stem_dir`` (default: alongside
     ``output_path``); the consolidated file is written to ``output_path``.
+
+    When ``write_instrumental`` is on and both a ``vocals`` track and at least
+    one non-vocal track exist, a second file ``<output>_instrumental.mid`` is
+    written with the vocals dropped (paths recorded on the result).
     """
     import pretty_midi
 
@@ -108,10 +115,30 @@ def batch_stems_to_midi(
     total_notes = sum(r.n_notes for r in stem_results.values())
     duration_s = merged.get_end_time()
 
+    # Instrumental version: same merge minus the vocals track.
+    instrumental_path = None
+    instrumental = None
+    if write_instrumental:
+        non_vocal = [i for i in merged.instruments if (i.name or "").lower() != "vocals"]
+        has_vocals = any((i.name or "").lower() == "vocals" for i in merged.instruments)
+        if has_vocals and non_vocal:
+            instrumental = pretty_midi.PrettyMIDI()
+            instrumental.instruments.extend(non_vocal)
+            base, ext = os.path.splitext(output_path)
+            instrumental_path = f"{base}_instrumental{ext}"
+            instrumental.write(instrumental_path)
+            if not quiet:
+                print(f"[batch] instrumental (sem vocals) -> {instrumental_path}")
+        elif not quiet:
+            reason = "sem track de vocals" if not has_vocals else "só há vocals"
+            print(f"[batch] instrumental não gerado ({reason})")
+
     return BatchResult(
         midi_path=output_path,
         midi_data=merged,
         stem_results=stem_results,
         total_notes=total_notes,
         duration_s=duration_s,
+        instrumental_path=instrumental_path,
+        instrumental_midi=instrumental,
     )
