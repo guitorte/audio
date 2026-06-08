@@ -32,8 +32,51 @@ Tudo cai em `<output_root>/<track>/`:
 <track>/
 ├── stems/        vocals.wav, drums.wav, bass.wav, guitar.wav, piano.wav, other.wav
 ├── midi/         vocals.mid, drums.mid, ...   (um .mid por stem, p/ editar na DAW)
+├── analysis/     <stem>_pianoroll.png + <stem>.txt   (imagem + texto p/ IA)
 └── <track>.mid   MIDI multi-track consolidado
 ```
+
+## Escolher a música
+
+Coloque os arquivos em `music-to-midi/input/` (qualquer wav/mp3/flac/m4a/ogg).
+No notebook, a célula 4 lista o conteúdo dessa pasta e mostra um **menu suspenso**
+para você escolher a track — sem digitar nome nenhum.
+
+## Análise: piano roll + texto legível por IA
+
+Para cada stem (e para o MIDI consolidado), o pipeline grava em `analysis/`:
+
+- **`<stem>_pianoroll.png`** — o piano roll daquela faixa.
+- **`<stem>.txt`** — uma representação textual, linha a linha, de todas as notas
+  (tempo, duração, pitch/nota, velocity), com um cabeçalho auto-explicativo. É um
+  formato que uma IA consegue ler para "sacar" a melodia/padrão **e regenerar o
+  MIDI**. O round-trip é provado por `text_to_midi()`:
+
+  ```python
+  from modules import text_to_midi
+  text_to_midi("output/minha-musica/analysis/minha-musica.txt", "recriado.mid")
+  ```
+
+  Trecho do `.txt`:
+
+  ```
+  # MIDI-TEXT v1 — representação textual de um MIDI, recriável por IA.
+  TEMPO_BPM: 120.00
+  DURATION_S: 1.950
+  N_TRACKS: 2
+  TRACK_BEGIN
+  NAME: vocals
+  PROGRAM: 53
+  IS_DRUM: false
+  N_NOTES: 4
+  PITCH_RANGE: C4..C5
+  # NOTE  start_s  dur_s  pitch  midi  vel
+  NOTE	0.000	0.450	C4	60	90
+  NOTE	0.500	0.450	E4	64	91
+  ...
+  TRACK_END
+  END
+  ```
 
 ## Engines por stem
 
@@ -116,11 +159,13 @@ music-to-midi/
 ├── README.md
 ├── requirements.txt
 ├── run.py                                  # CLI local
+├── input/                                  # solte aqui as músicas (notebook lista p/ escolher)
 ├── modules/
 │   ├── __init__.py
 │   ├── separate.py                         # Demucs: música → stems
 │   ├── transcribe.py                       # 1 stem → MIDI (Basic Pitch / ADTOF)
 │   ├── batch.py                            # stems → MIDI multi-track
+│   ├── analyze.py                          # piano roll PNG + MIDI-TEXT (+ text_to_midi)
 │   └── pipeline.py                         # song_to_midi() (cola tudo)
 └── notebooks/
     └── Song_to_Stems_to_MIDI.ipynb         # workflow único (Colab)

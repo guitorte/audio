@@ -4,6 +4,12 @@ Combines Demucs source separation with per-stem transcription
 (Basic Pitch + ADTOF-pytorch) behind a single :func:`song_to_midi` call.
 """
 
+from .analyze import (
+    midi_to_text,
+    save_piano_roll,
+    text_to_midi,
+    write_track_analysis,
+)
 from .batch import BatchResult, batch_stems_to_midi
 from .pipeline import PipelineResult, song_to_midi
 from .separate import (
@@ -34,4 +40,8 @@ __all__ = [
     "STEM_PRESETS",
     "DEFAULT_STEM_PROGRAMS",
     "canonical_stem_type",
+    "save_piano_roll",
+    "midi_to_text",
+    "text_to_midi",
+    "write_track_analysis",
 ]

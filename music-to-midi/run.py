@@ -35,6 +35,8 @@ def main(argv=None) -> int:
                         help="Write stems as mp3 instead of wav")
     parser.add_argument("--force-separation", action="store_true",
                         help="Re-run Demucs even if stems already exist")
+    parser.add_argument("--no-analysis", action="store_true",
+                        help="Skip piano-roll PNG + MIDI-TEXT generation")
     args = parser.parse_args(argv)
 
     t0 = time.time()
@@ -48,6 +50,7 @@ def main(argv=None) -> int:
         device=args.device,
         mp3_stems=args.mp3_stems,
         skip_separation_if_exists=not args.force_separation,
+        write_analysis=not args.no_analysis,
     )
     dt = time.time() - t0
 
@@ -59,7 +62,10 @@ def main(argv=None) -> int:
     print(f"Stems transcritos : {len(tr.stem_results)}")
     print(f"Total de notas    : {tr.total_notes}")
     print(f"Duração do MIDI   : {tr.duration_s:.1f}s")
-    print(f"MIDI consolidado  : {tr.midi_path}\n")
+    print(f"MIDI consolidado  : {tr.midi_path}")
+    if result.analysis_dir:
+        print(f"Análise (PNG+TXT) : {result.analysis_dir}")
+    print()
     print(f"{'Stem':10s} {'Engine':14s} {'Notas':>6s} {'Duração':>10s}")
     print("-" * 44)
     for stem_type, r in tr.stem_results.items():

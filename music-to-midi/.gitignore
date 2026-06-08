@@ -6,4 +6,9 @@ _demucs_raw/
 *.wav
 *.mp3
 *.flac
+*.m4a
+*.ogg
 !**/notebooks/*.ipynb
+# keep the input folder placeholder, ignore the audio dropped into it
+!input/
+!input/README.txt

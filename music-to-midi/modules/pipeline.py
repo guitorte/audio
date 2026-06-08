@@ -29,6 +29,8 @@ class PipelineResult:
     merged_midi: str
     separation: SeparationResult
     transcription: BatchResult
+    analysis_dir: Optional[str] = None
+    analysis: Optional[dict] = None  # {'piano_rolls': {...}, 'texts': {...}}
 
 
 def song_to_midi(
@@ -45,6 +47,7 @@ def song_to_midi(
     device: Optional[str] = None,
     mp3_stems: bool = False,
     skip_separation_if_exists: bool = True,
+    write_analysis: bool = True,
     quiet: bool = False,
 ) -> PipelineResult:
     """Run the full song → stems → MIDI workflow for one track.
@@ -107,6 +110,18 @@ def song_to_midi(
         quiet=quiet,
     )
 
+    # --- Stage 3: analysis artefacts (piano rolls + AI-readable text) -------
+    analysis_dir = os.path.join(track_dir, "analysis")
+    analysis = None
+    if write_analysis:
+        from .analyze import write_track_analysis
+
+        if not quiet:
+            print("[pipeline] gerando piano rolls + textos (analysis/) ...")
+        analysis = write_track_analysis(
+            transcription.midi_data, analysis_dir, track_name
+        )
+
     if not quiet:
         print(f"[pipeline] pronto: {merged_midi}")
 
@@ -118,4 +133,6 @@ def song_to_midi(
         merged_midi=merged_midi,
         separation=separation,
         transcription=transcription,
+        analysis_dir=analysis_dir if write_analysis else None,
+        analysis=analysis,
     )
