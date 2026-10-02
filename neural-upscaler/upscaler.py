@@ -145,6 +145,18 @@ def run(cmd: list[str], **kw) -> None:
                            + "\n".join(tail))
 
 
+def venv_env() -> dict:
+    """Environment for programs running in the AudioSR venv.
+
+    The Colab kernel exports variables that only make sense inside it:
+    MPLBACKEND points at the notebook's inline backend, and PYTHONPATH /
+    PYTHONHOME can leak the kernel's own site-packages into another Python.
+    """
+    env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONHOME", "MPLBACKEND")}
+    env["MPLBACKEND"] = "Agg"
+    return env
+
+
 def setup_main(want_separation: bool, want_apollo: bool, want_matchering: bool) -> None:
     pkgs = []
     if want_separation:
@@ -217,7 +229,7 @@ def audiosr(python: Path, jobs: list[dict], steps: int, guidance: float, seed: i
     jobs_file = WORK / "audiosr_jobs.json"
     jobs_file.write_text(json.dumps(jobs))
     run([python, HERE / "audiosr_worker.py", "--jobs", jobs_file, "--steps", steps,
-         "--guidance", guidance, "--seed", seed])
+         "--guidance", guidance, "--seed", seed], env=venv_env())
 
 
 def master(target: Path, reference: Path, dst: Path) -> Path:

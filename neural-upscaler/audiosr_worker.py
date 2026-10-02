@@ -13,11 +13,17 @@ returns, so a whole stereo song needs some care:
   zero-phase Butterworth crossover); files with no lossy shelf are left
   untouched, since AudioSR would only swap real highs for invented ones.
 """
+import os
+
+# The worker inherits the Colab kernel's environment, including
+# MPLBACKEND=module://matplotlib_inline.backend_inline, which does not exist
+# in this venv; audiosr imports matplotlib and would crash on it.
+os.environ["MPLBACKEND"] = "Agg"
+
 import argparse
 import contextlib
 import io
 import json
-import os
 import sys
 import tempfile
 import warnings
