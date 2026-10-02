@@ -9,35 +9,65 @@ Personal music/audio toolbox. Most of it is **Google Colab notebooks backed by s
 | `music-to-midi/` | Main song → stems (Demucs) → multi-track MIDI workflow. `modules/` package, `run.py` CLI, `notebooks/Song_to_Stems_to_MIDI.ipynb` |
 | `stem-to-midi/` | Earlier single-stem → MIDI project (Basic Pitch, ADTOF drums), now folded into `music-to-midi/` |
 | `audio-restoration-pipeline/` | DSP restoration and mastering (spectral gating, EQ, harmonic "frequency restoration", LUFS) with `modules/` and several notebook versions |
-| `neural-upscaler/` | Neural restoration: BS-RoFormer → Apollo → AudioSR → Matchering. It reads a Google Drive folder (default `áudio`) and writes to `upscaled/` inside it |
+| `neural-upscaler/` | Neural restoration of songs in a Google Drive folder. See its section below |
 | Top-level `*.ipynb` | Older standalone Colab notebooks (stem separator, WAV splitter, song→MIDI, LLM lyrics) |
 | Top-level `*.html` | Self-contained browser MIDI tools (riff/melody generators). Single file each, Tone.js from cdnjs, no build |
 | `upload/`, `images/`, `*.mp3` | User assets. Don't modify, move, or delete them |
 
 ## Conventions
 
-- **Colab is the target runtime.** Assume a recent Python (3.13 as of Oct 2026; don't hard-code a version), a T4 GPU, and Drive mounted at `/content/drive/MyDrive`. Notebooks shallow-clone this repo to `/content/audio` and `sys.path.insert` the project folder, then import its `modules`/package. A notebook's clone `BRANCH` must point at a branch that exists. Fall back to the default branch if the clone fails.
+- **Colab is the target runtime.** Assume a recent Python (3.13 as of Oct 2026; don't hard-code a version), a T4 GPU, and Drive mounted at `/content/drive/MyDrive`.
+- **Notebooks shallow-clone this repo** to `/content/audio`, `sys.path.insert` the project folder, and import its package. A notebook's `BRANCH` must exist, and the notebook falls back to the default branch if the clone fails. The clone is skipped when `/content/audio` already exists, so **after pushing a fix, the user must run *Runtime ▸ Disconnect and delete runtime*** before re-running, or they'll keep the old code. Say so whenever you hand back a fix.
 - **Logic lives in `.py` modules, and notebooks stay thin.** They hold form cells (`#@title`, `#@param`, `"cellView": "form"`) that call into the package. Put new logic in the module, not inline in the notebook.
 - **Generate or edit `.ipynb` files programmatically** (load JSON, edit cells, dump with `ensure_ascii=False`). Don't hand-edit the JSON. Keep outputs empty and `metadata.accelerator = "GPU"`. Include the "Open in Colab" badge pointing at the right branch.
 - **Language:** older READMEs and notebooks are in Portuguese (pt-BR) and `neural-upscaler/` is in English. Match the language of the folder you're editing.
 - **Drive paths contain accents** (`áudio`). Compare names with `unicodedata.normalize("NFC", ...)` plus `casefold()`, because Drive may return NFD (see `neural-upscaler/upscaler.py::find_folder`).
-- **Run subprocesses through a helper that streams output into the cell** (`neural-upscaler/upscaler.py::run`). Colab doesn't display a child process's own stdout/stderr, so a plain `subprocess.run(check=True)` fails with only "exit status 1" and hides the real error.
-- Never overwrite a user's source audio. Write results to a sibling output folder and skip existing outputs unless an overwrite flag is set.
+- **Never overwrite a user's source audio.** Write results to a sibling output folder and skip existing outputs unless an overwrite flag is set.
+
+## Running other programs from a notebook
+
+Two Colab traps have each broken a real run:
+
+1. **Child output is invisible.** Colab shows only what the kernel prints, so a plain `subprocess.run(check=True)` fails with a bare "exit status 1". Use `neural-upscaler/upscaler.py::run`, which streams output into the cell and raises with the last 25 lines.
+2. **Kernel environment variables leak into children.** Colab exports `MPLBACKEND=module://matplotlib_inline.backend_inline` and a `PYTHONPATH`. Both break a program running in a *different* Python, such as a venv: matplotlib rejects the unknown backend, and `PYTHONPATH` mixes in the kernel's packages. Launch such programs with `upscaler.py::venv_env()`, which drops `PYTHONPATH`/`PYTHONHOME` and sets `MPLBACKEND=Agg`.
+
+When a user reports a Colab failure, the streamed output above the traceback is where the real error is.
+
+## neural-upscaler
+
+Pipeline: **BS-RoFormer** vocal split → **Apollo** (lossy-codec repair) → **AudioSR** (bandwidth extension, 48 kHz) → **Matchering** (optional reference master). Every stage can be switched off. It reads a Drive folder (default `áudio`) and writes 24-bit WAVs plus a settings `.json` to `upscaled/` inside it. Scratch files go in `/content/upscaler_work`.
+
+| File | Runs in | Role |
+|---|---|---|
+| `upscaler.py` | Colab kernel | File selection, setup/installs, stages, `process()` |
+| `audiosr_worker.py` | AudioSR venv | Chunked Mid/Side AudioSR with the crossover |
+| `upscaler_dsp.py` | both | numpy/scipy only: shelf detection, crossover, chunking, crossfades |
+| `Neural_Audio_Upscaler.ipynb` | Colab | 3 form cells: connect Drive, choose and run, A/B compare |
+
+Invariants to keep:
+- **Stems sum to the mix.** audio-separator peak-normalises, so `separate_vocals()` scales its input to 0.5 peak and undoes it afterwards. The instrumental is the residual `mix - vocals`.
+- **AudioSR only adds highs.** `detect_cutoff()` finds the lossy shelf. Below it the output is the original audio, via a power-complementary zero-phase Butterworth `crossover()`. Files with no shelf skip AudioSR unless the user sets `CUTOFF_HZ`. Each chunk is level-matched to the band just under the cutoff, because AudioSR peak-normalises its output.
+- `audiosr_worker.py` may import only `upscaler_dsp.py`, never `upscaler.py`, because the venv lacks the kernel's packages.
 
 ## Dependency pitfalls (already solved; don't regress)
 
-- **basic-pitch** on Python 3.12: install with `--no-deps` plus `onnxruntime` (ONNX backend). Plain `pip install basic-pitch` drags in TensorFlow/tflite, which have no 3.12 wheels.
+- **basic-pitch** on Python ≥ 3.12: install with `--no-deps` plus `onnxruntime` (ONNX backend). Plain `pip install basic-pitch` drags in TensorFlow/tflite, which have no wheels for these versions.
 - **ADTOF-pytorch** is GitHub-only: `pip install git+https://github.com/xavriley/ADTOF-pytorch.git`.
-- **AudioSR 0.0.7** pins numpy 1.23.5, librosa 0.9.2, and transformers 4.30.2, which can't share Colab's environment. It runs in an isolated `uv` Python 3.10 venv (`neural-upscaler/upscaler.py::AUDIOSR_PINS`) with `torch==2.5.1` (before `torch.load` started defaulting to `weights_only=True`) `setuptools<70` (librosa 0.9.2 imports `pkg_resources`), and `matplotlib`, which `audiosr.utilities` imports without declaring it, so model loading fails without it. `setup_audiosr()` re-runs the pinned install on every call so older venvs get repaired. `audiosr_worker.py` runs inside that venv, launched with `venv_env()`. That strips the kernel's `PYTHONPATH`/`PYTHONHOME` and replaces Colab's `MPLBACKEND=module://matplotlib_inline.backend_inline`, which doesn't exist in the venv and crashes matplotlib, with `Agg`. The worker also forces `Agg` itself. Any other program run in a different Python needs the same treatment. It may import only `upscaler_dsp.py` (numpy/scipy), never `upscaler.py`.
+- **AudioSR 0.0.7** pins numpy 1.23.5, librosa 0.9.2, and transformers 4.30.2, which can't share Colab's environment. It runs in an isolated `uv` Python 3.10 venv. `upscaler.py::AUDIOSR_PINS` adds three pins of its own:
+  - `torch==2.5.1`: before `torch.load` defaulted to `weights_only=True`.
+  - `setuptools<70`: librosa 0.9.2 imports `pkg_resources`.
+  - `matplotlib`: `audiosr.utilities` imports it without declaring it.
+
+  `setup_audiosr()` re-runs the pinned install every time, so venvs built from an older pin list get repaired. The weights (several GB) download from Hugging Face on first use.
 - **Apollo** is cloned at a pinned commit (`APOLLO_COMMIT`), and its `inference.py` must run with `cwd` set to the clone. It requires 44.1 kHz input.
-- **audio-separator** peak-normalises stems. `separate_vocals()` scales its input to 0.5 peak and undoes that afterwards, and the instrumental is the residual `mix - vocals`. Keep both, so stems always sum to the original mix.
 
 ## Verifying changes
 
 There are no tests and usually no GPU or Hugging Face access in the dev sandbox, so model downloads fail locally. To check changes:
 - Unit-check pure helpers directly (e.g. `upscaler_dsp.py`: shelf detection, crossover reconstruction, crossfade weights summing to 1).
-- Run pipelines end to end with the model stages monkeypatched (fake separator/Apollo, or a stub `audiosr` package on `PYTHONPATH`), using `ffmpeg` and the repo's sample MP3.
+- Run pipelines end to end with the model stages monkeypatched (fake separator/Apollo), using `ffmpeg` and the repo's sample MP3.
 - Smoke-test notebooks by `exec`-ing their code cells with a stubbed `google.colab`.
-- AudioSR's real code can run without Hugging Face. Stub `transformers.RobertaTokenizer.from_pretrained` (return `None`) and `RobertaConfig.from_pretrained` (return `cls()`), then build `audiosr.pipeline.LatentDiffusion(**default_audioldm_config("basic")["model"]["params"])` on CPU with random weights. This exercises the full `super_resolution` path, and the worker, with `--steps 2`. Reproduce Colab's environment when testing launchers: set `MPLBACKEND=module://matplotlib_inline.backend_inline` and `PYTHONPATH=/env/python` in the parent.
+- **AudioSR's real code runs without Hugging Face.** Stub `transformers.RobertaTokenizer.from_pretrained` (return `None`) and `RobertaConfig.from_pretrained` (return `cls()`), then replace `audiosr.build_model` with one that builds `audiosr.pipeline.LatentDiffusion(**default_audioldm_config("basic")["model"]["params"])` on CPU with random weights. Run the worker with `--steps 2`. To inject the stub into a worker launched through `venv_env()`, which strips `PYTHONPATH`, use a `.pth` file in the scratch venv's site-packages, gated by an env var.
+- **Test launchers in Colab's environment:** set `MPLBACKEND=module://matplotlib_inline.backend_inline` and `PYTHONPATH=/env/python` in the parent process.
 - Say plainly which parts were only mock-tested. The first real model run happens in Colab.
 - `music-to-midi` can also run locally: `cd music-to-midi && python run.py song.mp3 -o output/`.
