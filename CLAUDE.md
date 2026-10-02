@@ -16,18 +16,19 @@ Personal music/audio toolbox. Most of it is **Google Colab notebooks backed by s
 
 ## Conventions
 
-- **Colab is the target runtime.** Assume Python 3.12, a T4 GPU, and Drive mounted at `/content/drive/MyDrive`. Notebooks shallow-clone this repo to `/content/audio` and `sys.path.insert` the project folder, then import its `modules`/package. A notebook's clone `BRANCH` must point at a branch that exists. Fall back to the default branch if the clone fails.
+- **Colab is the target runtime.** Assume a recent Python (3.13 as of Oct 2026; don't hard-code a version), a T4 GPU, and Drive mounted at `/content/drive/MyDrive`. Notebooks shallow-clone this repo to `/content/audio` and `sys.path.insert` the project folder, then import its `modules`/package. A notebook's clone `BRANCH` must point at a branch that exists. Fall back to the default branch if the clone fails.
 - **Logic lives in `.py` modules, and notebooks stay thin.** They hold form cells (`#@title`, `#@param`, `"cellView": "form"`) that call into the package. Put new logic in the module, not inline in the notebook.
 - **Generate or edit `.ipynb` files programmatically** (load JSON, edit cells, dump with `ensure_ascii=False`). Don't hand-edit the JSON. Keep outputs empty and `metadata.accelerator = "GPU"`. Include the "Open in Colab" badge pointing at the right branch.
 - **Language:** older READMEs and notebooks are in Portuguese (pt-BR) and `neural-upscaler/` is in English. Match the language of the folder you're editing.
 - **Drive paths contain accents** (`áudio`). Compare names with `unicodedata.normalize("NFC", ...)` plus `casefold()`, because Drive may return NFD (see `neural-upscaler/upscaler.py::find_folder`).
+- **Run subprocesses through a helper that streams output into the cell** (`neural-upscaler/upscaler.py::run`). Colab doesn't display a child process's own stdout/stderr, so a plain `subprocess.run(check=True)` fails with only "exit status 1" and hides the real error.
 - Never overwrite a user's source audio. Write results to a sibling output folder and skip existing outputs unless an overwrite flag is set.
 
 ## Dependency pitfalls (already solved; don't regress)
 
 - **basic-pitch** on Python 3.12: install with `--no-deps` plus `onnxruntime` (ONNX backend). Plain `pip install basic-pitch` drags in TensorFlow/tflite, which have no 3.12 wheels.
 - **ADTOF-pytorch** is GitHub-only: `pip install git+https://github.com/xavriley/ADTOF-pytorch.git`.
-- **AudioSR 0.0.7** pins numpy 1.23.5, librosa 0.9.2, and transformers 4.30.2, which can't share Colab's environment. It runs in an isolated `uv` Python 3.10 venv (`neural-upscaler/upscaler.py::AUDIOSR_PINS`) with `torch==2.5.1` (before `torch.load` started defaulting to `weights_only=True`) and `setuptools<70` (librosa 0.9.2 imports `pkg_resources`). `audiosr_worker.py` runs inside that venv. It may import only `upscaler_dsp.py` (numpy/scipy), never `upscaler.py`.
+- **AudioSR 0.0.7** pins numpy 1.23.5, librosa 0.9.2, and transformers 4.30.2, which can't share Colab's environment. It runs in an isolated `uv` Python 3.10 venv (`neural-upscaler/upscaler.py::AUDIOSR_PINS`) with `torch==2.5.1` (before `torch.load` started defaulting to `weights_only=True`) `setuptools<70` (librosa 0.9.2 imports `pkg_resources`), and `matplotlib`, which `audiosr.utilities` imports without declaring it, so model loading fails without it. `setup_audiosr()` re-runs the pinned install on every call so older venvs get repaired. `audiosr_worker.py` runs inside that venv. It may import only `upscaler_dsp.py` (numpy/scipy), never `upscaler.py`.
 - **Apollo** is cloned at a pinned commit (`APOLLO_COMMIT`), and its `inference.py` must run with `cwd` set to the clone. It requires 44.1 kHz input.
 - **audio-separator** peak-normalises stems. `separate_vocals()` scales its input to 0.5 peak and undoes that afterwards, and the instrumental is the residual `mix - vocals`. Keep both, so stems always sum to the original mix.
 
@@ -37,5 +38,6 @@ There are no tests and usually no GPU or Hugging Face access in the dev sandbox,
 - Unit-check pure helpers directly (e.g. `upscaler_dsp.py`: shelf detection, crossover reconstruction, crossfade weights summing to 1).
 - Run pipelines end to end with the model stages monkeypatched (fake separator/Apollo, or a stub `audiosr` package on `PYTHONPATH`), using `ffmpeg` and the repo's sample MP3.
 - Smoke-test notebooks by `exec`-ing their code cells with a stubbed `google.colab`.
+- AudioSR's real code can run without Hugging Face. Stub `transformers.RobertaTokenizer.from_pretrained` (return `None`) and `RobertaConfig.from_pretrained` (return `cls()`), then build `audiosr.pipeline.LatentDiffusion(**default_audioldm_config("basic")["model"]["params"])` on CPU with random weights. This exercises the full `super_resolution` path, and the worker, with `--steps 2`.
 - Say plainly which parts were only mock-tested. The first real model run happens in Colab.
 - `music-to-midi` can also run locally: `cd music-to-midi && python run.py song.mp3 -o output/`.
