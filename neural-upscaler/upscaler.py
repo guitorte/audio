@@ -125,8 +125,36 @@ def db(x: float) -> float:
 # --------------------------------------------------------------------------- setup
 
 def run(cmd: list[str], **kw) -> None:
-    print("$", " ".join(str(c) for c in cmd))
-    subprocess.run([str(c) for c in cmd], check=True, **kw)
+    """Run a command and stream its output into the notebook.
+
+    Colab only shows what the kernel itself prints; a child process writing to
+    its own stdout/stderr is invisible, so failures would surface as a bare
+    "exit status 1". Pipe everything through ``print`` and keep the tail for
+    the error message.
+    """
+    cmd = [str(c) for c in cmd]
+    print("$", " ".join(cmd), flush=True)
+    tail: list[str] = []
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                          errors="replace", bufsize=1, **kw) as proc:
+        for line in proc.stdout:
+            print(line, end="", flush=True)
+            tail = (tail + [line.rstrip()])[-25:]
+    if proc.returncode:
+        raise RuntimeError(f"{os.path.basename(cmd[0])} failed (exit {proc.returncode}). Last output:\n"
+                           + "\n".join(tail))
+
+
+def venv_env() -> dict:
+    """Environment for programs running in the AudioSR venv.
+
+    The Colab kernel exports variables that only make sense inside it:
+    MPLBACKEND points at the notebook's inline backend, and PYTHONPATH /
+    PYTHONHOME can leak the kernel's own site-packages into another Python.
+    """
+    env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONHOME", "MPLBACKEND")}
+    env["MPLBACKEND"] = "Agg"
+    return env
 
 
 def setup_main(want_separation: bool, want_apollo: bool, want_matchering: bool) -> None:
@@ -144,14 +172,21 @@ def setup_main(want_separation: bool, want_apollo: bool, want_matchering: bool) 
 
 
 AUDIOSR_PINS = ["audiosr==0.0.7", "torch==2.5.1", "torchaudio==2.5.1", "torchvision==0.20.1",
-                "setuptools<70"]  # librosa 0.9.2 still imports pkg_resources
+                "setuptools<70",   # librosa 0.9.2 still imports pkg_resources
+                "matplotlib"]      # imported by audiosr.utilities but not declared
 
 
 def setup_audiosr() -> Path:
     """Isolated Python 3.10 env for AudioSR. Takes a few minutes the first time."""
     python = AUDIOSR_ENV / "bin" / "python"
-    if python.exists() and subprocess.run([python, "-c", "import audiosr"], capture_output=True).returncode == 0:
-        return python
+    if not python.exists():
+        if shutil.which("uv") is None:
+            run([sys.executable, "-m", "pip", "install", "-q", "uv"])
+        run(["uv", "venv", "-q", "--python", "3.10", AUDIOSR_ENV])
+    # Always re-applied: a no-op when satisfied, and it repairs an env built by
+    # an older version of this list (e.g. one missing matplotlib).
+    run(["uv", "pip", "install", "-q", "--python", python, *AUDIOSR_PINS])
+    return python
     if shutil.which("uv") is None:
         run([sys.executable, "-m", "pip", "install", "-q", "uv"])
     run(["uv", "venv", "-q", "--python", "3.10", AUDIOSR_ENV])
@@ -194,7 +229,7 @@ def audiosr(python: Path, jobs: list[dict], steps: int, guidance: float, seed: i
     jobs_file = WORK / "audiosr_jobs.json"
     jobs_file.write_text(json.dumps(jobs))
     run([python, HERE / "audiosr_worker.py", "--jobs", jobs_file, "--steps", steps,
-         "--guidance", guidance, "--seed", seed])
+         "--guidance", guidance, "--seed", seed], env=venv_env())
 
 
 def master(target: Path, reference: Path, dst: Path) -> Path:

@@ -13,9 +13,17 @@ returns, so a whole stereo song needs some care:
   zero-phase Butterworth crossover); files with no lossy shelf are left
   untouched, since AudioSR would only swap real highs for invented ones.
 """
-import argparse
-import json
 import os
+
+# The worker inherits the Colab kernel's environment, including
+# MPLBACKEND=module://matplotlib_inline.backend_inline, which does not exist
+# in this venv; audiosr imports matplotlib and would crash on it.
+os.environ["MPLBACKEND"] = "Agg"
+
+import argparse
+import contextlib
+import io
+import json
 import sys
 import tempfile
 import warnings
@@ -39,7 +47,7 @@ def to_48k(audio, sr):
     return resample_poly(audio, SR // g, sr // g, axis=0).astype(np.float32)
 
 
-def enhance_channel(model, super_resolution, signal, cutoff, args, tmp):
+def enhance_channel(model, super_resolution, signal, cutoff, args, tmp, label):
     """Run AudioSR over one mono channel and return its above-cutoff band."""
     out = np.zeros_like(signal)
     weight = np.zeros_like(signal)
@@ -52,14 +60,17 @@ def enhance_channel(model, super_resolution, signal, cutoff, args, tmp):
             weight[start:start + len(piece)] += w   # silence: nothing to extend
             continue
         sf.write(tmp, piece, SR, subtype="FLOAT")
-        gen = np.asarray(super_resolution(model, tmp, seed=args.seed, ddim_steps=args.steps,
-                                          guidance_scale=args.guidance)).reshape(-1)[:len(piece)]
+        # AudioSR prints a banner and a tqdm bar per call; hundreds of them would flood the notebook.
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            gen = super_resolution(model, tmp, seed=args.seed, ddim_steps=args.steps,
+                                   guidance_scale=args.guidance)
+        gen = np.asarray(gen).reshape(-1)[:len(piece)]
         gen = np.pad(gen, (0, len(piece) - len(gen)))
         gen *= lo_band / max(band_rms(gen, SR, cutoff / 2, cutoff), 1e-9)
         out[start:start + len(piece)] += gen * w
         weight[start:start + len(piece)] += w
-        print(f"      chunk {n + 1}/{len(starts)}", end="\r", flush=True)
-    print()
+        if (n + 1) % max(1, len(starts) // 10) == 0 or n + 1 == len(starts):
+            print(f"      {label}: chunk {n + 1}/{len(starts)}", flush=True)
     return out / np.maximum(weight, 1e-9)
 
 
@@ -73,6 +84,7 @@ def main():
     jobs = json.load(open(args.jobs))
 
     warnings.filterwarnings("ignore")
+    print("   loading AudioSR (the first run downloads several GB of weights)…", flush=True)
     from audiosr import build_model, super_resolution
     model = build_model(model_name="basic", device="auto")
 
@@ -93,9 +105,9 @@ def main():
         if audio.shape[1] == 1:
             audio = np.repeat(audio, 2, axis=1)
         mid, side = (audio[:, 0] + audio[:, 1]) / 2, (audio[:, 0] - audio[:, 1]) / 2
-        hi_mid = enhance_channel(model, super_resolution, mid, cutoff, args, tmp)
+        hi_mid = enhance_channel(model, super_resolution, mid, cutoff, args, tmp, "mid")
         # A near-mono side channel only holds noise; AudioSR would invent highs there.
-        hi_side = (enhance_channel(model, super_resolution, side, cutoff, args, tmp)
+        hi_side = (enhance_channel(model, super_resolution, side, cutoff, args, tmp, "side")
                    if np.sqrt(np.mean(side ** 2)) > 0.03 * np.sqrt(np.mean(mid ** 2)) else np.zeros_like(side))
         hi = np.stack([hi_mid + hi_side, hi_mid - hi_side], axis=1)
         result = crossover(audio, hi, cutoff, SR)
