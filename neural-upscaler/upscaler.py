@@ -118,6 +118,23 @@ def fit_length(audio: np.ndarray, frames: int) -> np.ndarray:
     return np.pad(audio, ((0, frames - len(audio)), (0, 0)))
 
 
+def duration(path: Path) -> float:
+    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+                         capture_output=True, text=True).stdout.strip()
+    try:
+        return float(out)
+    except ValueError:
+        return 0.0
+
+
+def excerpt(path: Path, start: float, seconds: float, sr: int) -> np.ndarray:
+    """Stereo float excerpt [samples, 2] for listening; the window slides back to fit short songs."""
+    start = max(0.0, min(start, duration(path) - seconds))
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", str(start), "-t", str(seconds), "-i", str(path),
+                          "-ac", "2", "-ar", str(sr), "-f", "f32le", "-"], capture_output=True, check=True).stdout
+    return np.frombuffer(raw, dtype=np.float32).reshape(-1, 2)
+
+
 def db(x: float) -> float:
     return 20 * np.log10(max(float(x), 1e-12))
 
