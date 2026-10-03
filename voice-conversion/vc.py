@@ -108,12 +108,16 @@ def scan_voices(folder: Path, out: Path | None = None) -> Voices:
 
     ``out`` defaults to ``folder`` (Colab: one Drive folder). On Kaggle the
     input is a read-only dataset and ``out`` is /kaggle/working.
+
+    A flat folder works too: ``.pth``/``.index`` models next to the songs are
+    picked up, any song can be a Seed-VC reference (``resolve_reference``) and
+    training can take files by number or name (``training_set``).
     """
     vdir, odir = folder / VOICES_SUBDIR, (out or folder) / VOICES_SUBDIR
     odir.mkdir(parents=True, exist_ok=True)
     refs = U.list_audio(vdir) if vdir.is_dir() else []
     models = {}
-    for d in dict.fromkeys([vdir, odir]):  # output last, so a freshly trained model wins
+    for d in dict.fromkeys([folder, vdir, odir]):  # output last, so a freshly trained model wins
         for pth in sorted(d.glob("*.pth")) if d.is_dir() else []:
             idx = pth.with_suffix(".index")
             models[pth.stem] = (pth, idx if idx.exists() else None)
@@ -123,13 +127,15 @@ def scan_voices(folder: Path, out: Path | None = None) -> Voices:
 
 
 def describe(v: Voices) -> str:
-    lines = [f"🎤 {v.folder}" + (f"  (trained models → {v.out})" if v.out != v.folder else "")]
+    shown = v.folder if v.folder.is_dir() else v.folder.parent  # flat dataset: no voices/ subfolder
+    lines = [f"🎤 {shown}" + (f"  (trained models → {v.out})" if v.out != v.folder else "")]
     lines.append("  Seed-VC reference clips:" if v.references
                  else "  Seed-VC reference clips: none in voices/ (a song number or name from the list above also works)")
     lines += [f"    {i:2d}. {p.name}" for i, p in enumerate(v.references, 1)]
     lines.append("  RVC models:" if v.models else "  RVC models: none yet")
     lines += [f"     • {n}" + ("" if idx else "  (no .index)") for n, (_, idx) in v.models.items()]
-    lines.append("  RVC training sets:" if v.datasets else "  RVC training sets: none yet")
+    lines.append("  RVC training sets:" if v.datasets
+                 else "  RVC training sets: no voices/ subfolders (pick recordings by number or name from the list above)")
     lines += [f"     • {n}/  ({len(U.list_audio(d))} files)" for n, d in v.datasets.items()]
     return "\n".join(lines)
 
@@ -437,20 +443,47 @@ def _resume_sources(voices: Voices, model_name: str) -> list[Path]:
     return [d for d in dict.fromkeys(found) if any(d.glob("G_*.pth"))]
 
 
+def training_set(folder: Path, voices: Voices, dataset: str, model_name: str) -> tuple[str, list[Path]]:
+    """(model name, recordings) for ``dataset``.
+
+    ``dataset`` names a ``voices/`` subfolder, or selects files from the songs
+    list like SONGS does (``"maria"``, ``"4-9"``), for datasets kept flat.
+    """
+    if voices.datasets:
+        try:
+            ds = pick(list(voices.datasets), dataset, "Training folder")
+            return U.safe_stem(Path(model_name or ds)).replace(" ", "_"), U.list_audio(voices.datasets[ds])
+        except ValueError:
+            pass
+    try:
+        files = U.select_files(U.list_audio(folder), dataset)
+    except ValueError as e:
+        raise ValueError(f"DATASET '{dataset}' matches no voices/ subfolder "
+                         f"({', '.join(voices.datasets) or 'none'}) and no files: {e}") from None
+    if not model_name.strip():
+        if not dataset.strip() or any(c.isdigit() for c in dataset) or dataset.strip().lower() == "all":
+            raise ValueError("Set MODEL_NAME: the recordings were picked by number, so there is no name to reuse.")
+        model_name = dataset
+    return U.safe_stem(Path(model_name)).replace(" ", "_"), files
+
+
 def train(folder: Path, dataset: str, model_name: str, opts: TrainOptions,
           out: Path | None = None) -> tuple[Path, Path | None]:
-    """Train from ``<folder>/voices/<dataset>/``; publish to ``<out>/voices/`` (default: ``folder``)."""
+    """Train from ``<folder>/voices/<dataset>/`` or files picked from ``folder``;
+    publish to ``<out>/voices/`` (default: ``folder``)."""
     voices = scan_voices(folder, out)
-    ds_name = pick(list(voices.datasets), dataset, "Training folder")
-    model_name = U.safe_stem(Path(model_name or ds_name)).replace(" ", "_")
+    model_name, files = training_set(folder, voices, dataset, model_name)
     if opts.isolate_vocals:
         U.setup_main(True, False, False)
     python = setup_applio(for_training=True)
 
     # 1. Clean, decoded copies of the recordings.
     data = WORK / "datasets" / model_name
-    files = U.list_audio(voices.datasets[ds_name])
-    print(f"\nPreparing {len(files)} recordings from {ds_name}/…", flush=True)
+    print(f"\nPreparing {len(files)} recordings for '{model_name}': " + ", ".join(f.name for f in files), flush=True)
+    wanted = {f"{U.safe_stem(src)}.wav" for src in files}
+    for stale in data.glob("*.wav") if data.is_dir() else []:
+        if stale.name not in wanted:  # dropped from the selection since the last run
+            stale.unlink()
     for src in files:
         dst = data / f"{U.safe_stem(src)}.wav"
         if dst.exists():
