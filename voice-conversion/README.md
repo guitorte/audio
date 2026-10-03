@@ -9,7 +9,9 @@ song ─► BS-RoFormer ─┬─ vocal ──► Seed-VC | RVC ──► level-
                      └─ instrumental ────────────────────────────────────┴─► converted/<song>__<voice>__<engine>.wav
 ```
 
-Drive layout (inside the songs folder, default `áudio`):
+**Flat folders work too**, which is the simplest option on Kaggle: put songs, voice clips, `.pth`/`.index` models and training recordings all at the dataset root. Every audio file is listed with a number, and each cell takes those numbers or parts of names (training: `DATASET = "maria take"` or `"4-9"` with a `MODEL_NAME`).
+
+Or organise it with a `voices/` subfolder (the Drive default, inside the songs folder `áudio`):
 
 | Path | Used by |
 |---|---|
