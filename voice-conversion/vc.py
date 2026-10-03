@@ -116,7 +116,8 @@ def scan_voices(folder: Path) -> Voices:
 
 def describe(v: Voices) -> str:
     lines = [f"🎤 {v.folder}"]
-    lines.append("  Seed-VC reference clips:" if v.references else "  Seed-VC reference clips: none yet")
+    lines.append("  Seed-VC reference clips:" if v.references
+                 else "  Seed-VC reference clips: none in voices/ (a song number or name from the list above also works)")
     lines += [f"    {i:2d}. {p.name}" for i, p in enumerate(v.references, 1)]
     lines.append("  RVC models:" if v.models else "  RVC models: none yet")
     lines += [f"     • {n}" + ("" if idx else "  (no .index)") for n, (_, idx) in v.models.items()]
@@ -134,6 +135,29 @@ def pick(names: list[str], spec: str, what: str) -> str:
         return hits[0]
     raise ValueError(f"{what} '{spec}' " + ("is ambiguous: " + ", ".join(hits) if hits
                                              else "not found. Available: " + (", ".join(names) or "none")))
+
+
+def resolve_reference(folder: Path, voices: Voices, spec: str) -> Path:
+    """A Seed-VC reference: a clip in voices/ first, else a file from the songs list.
+
+    Numbers follow the listing they come from: voices/ clips when there are
+    any, otherwise the song numbers printed by cell 1.
+    """
+    if voices.references:
+        try:
+            return voices.folder / pick([p.name for p in voices.references], spec, "Reference clip")
+        except ValueError:
+            pass
+    songs = U.list_audio(folder)
+    try:
+        ref = folder / pick([p.name for p in songs], spec, "Reference")
+    except ValueError:
+        raise ValueError(
+            f"Reference '{spec}' matches no clip in voices/ "
+            f"({', '.join(p.name for p in voices.references) or 'empty'}) "
+            f"and no song ({', '.join(p.name for p in songs) or 'none'}).") from None
+    print(f"Using '{ref.name}' from the songs folder as the reference voice.")
+    return ref
 
 
 # --------------------------------------------------------------------------- audio
@@ -276,8 +300,7 @@ def convert(files: list[Path], folder: Path, engine: str, voice: str, opts: Opti
     """``engine`` is "seedvc" (``voice`` = reference clip name) or "rvc" (``voice`` = model name)."""
     voices = scan_voices(folder)
     if engine == "seedvc":
-        names = [p.name for p in voices.references]
-        ref = voices.folder / pick(names, voice, "Reference clip")
+        ref = resolve_reference(folder, voices, voice)
         label = U.safe_stem(ref)
         U.setup_main(opts.separate or opts.isolate_reference, False, False)
         python = setup_seedvc()

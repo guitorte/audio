@@ -24,4 +24,6 @@ Drive layout (inside the songs folder, default `áudio`):
 
 Shared Drive, audio, separation and subprocess helpers come from `../neural-upscaler/upscaler.py`.
 
+Colab's free tier has disconnected this notebook mid-run as a restricted workload, so use paid compute units or another GPU machine.
+
 Only convert voices you have the right to use. Model weights keep their own licences: Seed-VC is GPL-3.0 and Applio is MIT, each with its own terms of use.
