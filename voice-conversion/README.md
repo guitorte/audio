@@ -2,7 +2,7 @@
 
 Swap the singer in a song with another voice and keep the instrumental, using [Seed-VC](https://github.com/Plachtaa/seed-vc) (zero-shot) or RVC through [Applio](https://github.com/IAHispano/Applio) (convert and train).
 
-[Open the notebook in Colab](https://colab.research.google.com/github/guitorte/audio/blob/ccr-8be874fb-rdbsnf/voice-conversion/Voice_Conversion.ipynb)
+[Open the notebook in Colab](https://colab.research.google.com/github/guitorte/audio/blob/ccr-8be874fb-rdbsnf/voice-conversion/Voice_Conversion.ipynb) · **Kaggle:** import `Voice_Conversion_Kaggle.ipynb` (*File ▸ Import Notebook*, or paste its GitHub URL), attach your songs as a Dataset, set *GPU T4 x2* and *Internet On*. Setup steps are in its first cell.
 
 ```
 song ─► BS-RoFormer ─┬─ vocal ──► Seed-VC | RVC ──► level-matched vocal ─┐
@@ -20,7 +20,8 @@ Drive layout (inside the songs folder, default `áudio`):
 | File | Role |
 |---|---|
 | `vc.py` | Setup (pinned clones, isolated `uv` venvs), vocal split/rebuild, the two engines, training with Drive mirroring |
-| `Voice_Conversion.ipynb` | Form cells: connect Drive, Seed-VC, RVC convert, RVC train, listen |
+| `Voice_Conversion.ipynb` | Colab form cells: connect Drive, Seed-VC, RVC convert, RVC train, listen |
+| `Voice_Conversion_Kaggle.ipynb` | Kaggle version: reads a read-only Dataset, writes to `/kaggle/working`, `RUN` switches per task, zip cell |
 
 Shared Drive, audio, separation and subprocess helpers come from `../neural-upscaler/upscaler.py`.
 

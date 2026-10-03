@@ -1,4 +1,4 @@
-"""Voice conversion for songs in Google Drive: Seed-VC (zero-shot) and RVC via Applio.
+"""Voice conversion for songs in Google Drive or a Kaggle dataset: Seed-VC (zero-shot) and RVC via Applio.
 
 Both engines convert only the vocal. Songs are split with the neural-upscaler's
 BS-RoFormer separator, the vocal is converted, level-matched and laid back over
@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -95,27 +96,34 @@ def setup_applio(for_training: bool = False) -> Path:
 
 @dataclass
 class Voices:
-    folder: Path
+    folder: Path                                 # <input>/voices (may be read-only, may not exist)
+    out: Path                                    # <output>/voices (writable: trained models, mirror)
     references: list[Path]                       # audio clips for Seed-VC
     models: dict[str, tuple[Path, Path | None]]  # RVC name -> (.pth, .index)
     datasets: dict[str, Path]                    # subfolders of recordings for RVC training
 
 
-def scan_voices(folder: Path) -> Voices:
-    vdir = folder / VOICES_SUBDIR
-    vdir.mkdir(exist_ok=True)
-    refs = U.list_audio(vdir)
+def scan_voices(folder: Path, out: Path | None = None) -> Voices:
+    """Voices from ``<folder>/voices`` plus models trained into ``<out>/voices``.
+
+    ``out`` defaults to ``folder`` (Colab: one Drive folder). On Kaggle the
+    input is a read-only dataset and ``out`` is /kaggle/working.
+    """
+    vdir, odir = folder / VOICES_SUBDIR, (out or folder) / VOICES_SUBDIR
+    odir.mkdir(parents=True, exist_ok=True)
+    refs = U.list_audio(vdir) if vdir.is_dir() else []
     models = {}
-    for pth in sorted(vdir.glob("*.pth")):
-        idx = pth.with_suffix(".index")
-        models[pth.stem] = (pth, idx if idx.exists() else None)
+    for d in dict.fromkeys([vdir, odir]):  # output last, so a freshly trained model wins
+        for pth in sorted(d.glob("*.pth")) if d.is_dir() else []:
+            idx = pth.with_suffix(".index")
+            models[pth.stem] = (pth, idx if idx.exists() else None)
     datasets = {d.name: d for d in sorted(vdir.iterdir())
-                if d.is_dir() and not d.name.startswith(".") and U.list_audio(d)}
-    return Voices(vdir, refs, models, datasets)
+                if d.is_dir() and not d.name.startswith(".") and U.list_audio(d)} if vdir.is_dir() else {}
+    return Voices(vdir, odir, refs, models, datasets)
 
 
 def describe(v: Voices) -> str:
-    lines = [f"🎤 {v.folder}"]
+    lines = [f"🎤 {v.folder}" + (f"  (trained models → {v.out})" if v.out != v.folder else "")]
     lines.append("  Seed-VC reference clips:" if v.references
                  else "  Seed-VC reference clips: none in voices/ (a song number or name from the list above also works)")
     lines += [f"    {i:2d}. {p.name}" for i, p in enumerate(v.references, 1)]
@@ -145,7 +153,8 @@ def resolve_reference(folder: Path, voices: Voices, spec: str) -> Path:
     """
     if voices.references:
         try:
-            return voices.folder / pick([p.name for p in voices.references], spec, "Reference clip")
+            name = pick([p.name for p in voices.references], spec, "Reference clip")
+            return next(p for p in voices.references if p.name == name)
         except ValueError:
             pass
     songs = U.list_audio(folder)
@@ -296,9 +305,13 @@ def _reference_clip(ref: Path, isolate: bool) -> Path:
     return clip
 
 
-def convert(files: list[Path], folder: Path, engine: str, voice: str, opts: Options) -> list[Result]:
-    """``engine`` is "seedvc" (``voice`` = reference clip name) or "rvc" (``voice`` = model name)."""
-    voices = scan_voices(folder)
+def convert(files: list[Path], folder: Path, engine: str, voice: str, opts: Options,
+            out: Path | None = None) -> list[Result]:
+    """``engine`` is "seedvc" (``voice`` = reference clip name) or "rvc" (``voice`` = model name).
+
+    Reads songs/voices from ``folder``; writes to ``out`` (default: ``folder``).
+    """
+    voices = scan_voices(folder, out)
     if engine == "seedvc":
         ref = resolve_reference(folder, voices, voice)
         label = U.safe_stem(ref)
@@ -316,7 +329,7 @@ def convert(files: list[Path], folder: Path, engine: str, voice: str, opts: Opti
     else:
         raise ValueError("engine must be 'seedvc' or 'rvc'")
 
-    out_dir = folder / OUT_SUBDIR
+    out_dir = (out or folder) / OUT_SUBDIR
     results = []
     for src in files:
         res = Result(source=str(src))
@@ -365,11 +378,11 @@ class TrainOptions:
     sample_rate: int = 40000
 
 
-class _DriveSync:
-    """Copy finished checkpoint files to Drive while Applio trains.
+class _Mirror:
+    """Copy finished checkpoint files to the output folder while Applio trains.
 
-    Colab can disconnect mid-training; mirrored checkpoints let the next run
-    resume. A file is copied once it has been unchanged for 30 s, so a
+    Colab can disconnect and Kaggle sessions end; mirrored checkpoints let the
+    next run resume. A file is copied once it has been unchanged for 30 s, so a
     half-written checkpoint is never mirrored.
     """
     def __init__(self, src: Path, dst: Path, patterns: tuple[str, ...], newest_only: str = ""):
@@ -398,7 +411,7 @@ class _DriveSync:
             try:
                 self.sync()
             except OSError as e:
-                print(f"   (Drive sync skipped: {e})", flush=True)
+                print(f"   (checkpoint mirror skipped: {e})", flush=True)
 
     def __enter__(self):
         self.thread.start()
@@ -410,8 +423,24 @@ class _DriveSync:
         self.sync(settle=0)
 
 
-def train(folder: Path, dataset: str, model_name: str, opts: TrainOptions) -> tuple[Path, Path | None]:
-    voices = scan_voices(folder)
+def _resume_sources(voices: Voices, model_name: str) -> list[Path]:
+    """Where an earlier session may have left checkpoints, best first.
+
+    On Kaggle, a previous run's output can be attached as an input; it then
+    appears read-only under /kaggle/input/<name>/voices/.training/<model>.
+    """
+    tail = Path(VOICES_SUBDIR) / ".training" / model_name
+    found = [voices.out / ".training" / model_name, voices.folder / ".training" / model_name]
+    kaggle = KAGGLE_INPUT
+    if kaggle.is_dir():
+        found += [p.parent.parent / tail for p in kaggle.glob(f"**/{VOICES_SUBDIR}/.training")]
+    return [d for d in dict.fromkeys(found) if any(d.glob("G_*.pth"))]
+
+
+def train(folder: Path, dataset: str, model_name: str, opts: TrainOptions,
+          out: Path | None = None) -> tuple[Path, Path | None]:
+    """Train from ``<folder>/voices/<dataset>/``; publish to ``<out>/voices/`` (default: ``folder``)."""
+    voices = scan_voices(folder, out)
     ds_name = pick(list(voices.datasets), dataset, "Training folder")
     model_name = U.safe_stem(Path(model_name or ds_name)).replace(" ", "_")
     if opts.isolate_vocals:
@@ -429,14 +458,15 @@ def train(folder: Path, dataset: str, model_name: str, opts: TrainOptions) -> tu
         vocals_wav, _, vocals = split(src, WORK / "songs" / U.safe_stem(src), opts.isolate_vocals)
         U.write(dst, mono(vocals), SR)
 
-    # 2. Resume from Drive if a previous session got this far.
+    # 2. Resume if a previous session got this far.
     exp = APPLIO_DIR / "logs" / model_name
-    mirror = voices.folder / ".training" / model_name
-    if not any(exp.glob("G_*.pth")) and any(mirror.glob("G_*.pth")):
+    mirror = voices.out / ".training" / model_name
+    sources = _resume_sources(voices, model_name)
+    if not any(exp.glob("G_*.pth")) and sources:
         exp.mkdir(parents=True, exist_ok=True)
-        for f in mirror.iterdir():
+        for f in sources[0].iterdir():
             shutil.copy2(f, exp / f.name)
-        print(f"   resuming from checkpoints saved in {mirror}")
+        print(f"   resuming from checkpoints saved in {sources[0]}")
 
     env, sr = U.venv_env(), str(opts.sample_rate)
     # "-" = CPU. Applio's extract silently writes nothing if told to use a GPU that isn't there.
@@ -451,8 +481,8 @@ def train(folder: Path, dataset: str, model_name: str, opts: TrainOptions) -> tu
                "--f0-method", "rmvpe", "--gpu", gpu, "--cpu-cores", 2], cwd=APPLIO_DIR, env=env)
         _expect_files(exp / "extracted", "*.npy", "Applio feature extraction")
 
-    # 3. Train, mirroring checkpoints to Drive as they appear.
-    with _DriveSync(exp, mirror, ("G_*.pth", "D_*.pth", "config.json", "model_info.json", "*.index"),
+    # 3. Train, mirroring checkpoints to the output folder as they appear.
+    with _Mirror(exp, mirror, ("G_*.pth", "D_*.pth", "config.json", "model_info.json", "*.index"),
                     newest_only=f"{model_name}_*e_*s.pth"):
         U.run([python, "core.py", "train", "--model-name", model_name, "--sample-rate", sr,
                "--total-epoch", opts.epochs, "--save-every-epoch", opts.save_every,
@@ -461,9 +491,67 @@ def train(folder: Path, dataset: str, model_name: str, opts: TrainOptions) -> tu
     # 4. Publish the newest weights + index where the convert cell looks.
     weights = sorted(exp.glob(f"{model_name}_*e_*s.pth"), key=lambda p: p.stat().st_mtime)
     pth = _expect(weights[-1] if weights else exp / f"{model_name}.pth", "RVC training")
-    shutil.copy2(pth, voices.folder / f"{model_name}.pth")
+    shutil.copy2(pth, voices.out / f"{model_name}.pth")
     index = exp / f"{model_name}.index"
     if index.exists():
-        shutil.copy2(index, voices.folder / f"{model_name}.index")
-    print(f"\n✅ {voices.folder / (model_name + '.pth')}  (from {pth.name})")
-    return voices.folder / f"{model_name}.pth", (voices.folder / f"{model_name}.index") if index.exists() else None
+        shutil.copy2(index, voices.out / f"{model_name}.index")
+    print(f"\n✅ {voices.out / (model_name + '.pth')}  (from {pth.name})")
+    return voices.out / f"{model_name}.pth", (voices.out / f"{model_name}.index") if index.exists() else None
+
+
+# --------------------------------------------------------------------------- Kaggle
+
+KAGGLE_INPUT = Path("/kaggle/input")
+KAGGLE_OUTPUT = Path("/kaggle/working")
+
+
+def kaggle_input(name: str = "", root: Path | None = None) -> Path:
+    """The attached dataset folder that holds the songs (and/or voices/).
+
+    ``name`` may be empty (auto-detect), a path relative to /kaggle/input, or
+    part of a folder name. Attached outputs of earlier runs (they contain
+    ``converted/``) are skipped so they aren't mistaken for the songs.
+    """
+    root = root or KAGGLE_INPUT
+    if name.strip():
+        direct = Path(name) if Path(name).is_absolute() else root / name
+        if direct.is_dir():
+            return direct
+    candidates = []
+    for d in [root, *sorted(p for p in root.glob("**/*") if p.is_dir() and len(p.relative_to(root).parts) <= 4)]:
+        rel = d.relative_to(root).parts
+        if VOICES_SUBDIR in rel or OUT_SUBDIR in rel or (d / OUT_SUBDIR).is_dir():
+            continue  # inside voices/ (training sets, not songs) or an attached earlier output
+        songs = U.list_audio(d) if d.is_dir() else []
+        if songs or (d / VOICES_SUBDIR).is_dir():
+            candidates.append((0 if songs else 1, len(d.parts), d))
+    if name.strip():
+        candidates = [c for c in candidates if U._nfc(name) in U._nfc(str(c[2].relative_to(root)))]
+    if not candidates:
+        raise FileNotFoundError(
+            f"No folder with songs found under {root}. Upload your songs as a Kaggle Dataset and attach it "
+            "with 'Add Input', or set INPUT to its folder.")
+    candidates.sort(key=lambda c: (c[0], c[1]))
+    best = [c for c in candidates if c[:2] == candidates[0][:2]]
+    if len(best) > 1:
+        raise ValueError("Several folders could hold your songs; set INPUT to one of: "
+                         + ", ".join(str(c[2]) for c in best))
+    return best[0][2]
+
+
+def kaggle_setup() -> str:
+    """ffmpeg and a GPU sanity check for a Kaggle session. Returns the GPU name."""
+    if shutil.which("ffmpeg") is None:
+        U.run(["apt-get", "-qq", "update"])
+        U.run(["apt-get", "-qq", "install", "-y", "ffmpeg"])
+    gpu = ""
+    if shutil.which("nvidia-smi"):
+        gpu = subprocess.run(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+                             capture_output=True, text=True).stdout.strip().splitlines()[0:1]
+        gpu = gpu[0] if gpu else ""
+    if not gpu:
+        print("⚠️ No GPU. Settings ▸ Accelerator ▸ GPU T4 x2.")
+    elif "P100" in gpu:
+        print("⚠️ P100: Seed-VC works, but RVC (Applio's PyTorch build) no longer supports this GPU. "
+              "Switch to GPU T4 x2 for RVC.")
+    return gpu
