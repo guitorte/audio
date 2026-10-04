@@ -66,6 +66,19 @@ def list_audio(folder: Path) -> list[Path]:
                   key=lambda p: _nfc(p.name))
 
 
+def match_names(names: list[str], fragment: str) -> list[str]:
+    """Names matching ``fragment``, most specific tier first: exact name or stem,
+    then names starting with it, then names containing it ("male" must not
+    also pick "female voice.wav")."""
+    key = _nfc(fragment)
+    for tier in ([n for n in names if key in (_nfc(n), _nfc(Path(n).stem))],
+                 [n for n in names if _nfc(n).startswith(key)],
+                 [n for n in names if key in _nfc(n)]):
+        if tier:
+            return tier
+    return []
+
+
 def select_files(files: list[Path], spec: str) -> list[Path]:
     """``all`` | ``1, 3, 5-7`` (numbers from the listing) | name fragments ``know better; demo``."""
     spec = (spec or "").strip()
@@ -80,7 +93,8 @@ def select_files(files: list[Path], spec: str) -> list[Path]:
                     raise ValueError(f"No file number {i}; the listing has {len(files)} files")
                 chosen.append(files[i - 1])
         else:
-            hits = [f for f in files if _nfc(token) in _nfc(f.name)]
+            names = match_names([f.name for f in files], token)
+            hits = [f for f in files if f.name in names]
             if not hits:
                 raise ValueError(f"No file name contains '{token}'")
             chosen.extend(hits)
