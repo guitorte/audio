@@ -26,6 +26,7 @@ from scipy.signal import resample_poly
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "neural-upscaler"))
 import upscaler as U  # noqa: E402  (shared Drive/audio/subprocess helpers)
+import pitch  # noqa: E402  (optional octave check)
 
 SR = 44_100
 WORK = Path("/content/vc_work") if Path("/content").exists() else HERE / "_work"
@@ -144,7 +145,7 @@ def pick(names: list[str], spec: str, what: str) -> str:
     spec = spec.strip()
     if spec.isdigit() and 1 <= int(spec) <= len(names):
         return names[int(spec) - 1]
-    hits = [n for n in names if U._nfc(spec) in U._nfc(n)]
+    hits = U.match_names(names, spec)
     if len(hits) == 1:
         return hits[0]
     raise ValueError(f"{what} '{spec}' " + ("is ambiguous: " + ", ".join(hits) if hits
@@ -166,7 +167,9 @@ def resolve_reference(folder: Path, voices: Voices, spec: str) -> Path:
     songs = U.list_audio(folder)
     try:
         ref = folder / pick([p.name for p in songs], spec, "Reference")
-    except ValueError:
+    except ValueError as e:
+        if "ambiguous" in str(e):
+            raise
         raise ValueError(
             f"Reference '{spec}' matches no clip in voices/ "
             f"({', '.join(p.name for p in voices.references) or 'empty'}) "
@@ -289,6 +292,11 @@ class Options:
     # RVC
     index_rate: float = 0.5
     protect: float = 0.33
+    # Optional octave check: shift by whole octaves so the song's vocal lands in
+    # the target voice's register (added to ``semitones``). For RVC the target
+    # register comes from ``pitch_reference``, a clip of the model's voice.
+    auto_octave: bool = False
+    pitch_reference: str = ""
 
 
 @dataclass
@@ -335,6 +343,20 @@ def convert(files: list[Path], folder: Path, engine: str, voice: str, opts: Opti
     else:
         raise ValueError("engine must be 'seedvc' or 'rvc'")
 
+    target_pitch = None
+    if opts.auto_octave:
+        if engine == "rvc":
+            if not opts.pitch_reference.strip():
+                raise ValueError("AUTO_OCTAVE with RVC needs PITCH_REFERENCE: a clip of the model's voice "
+                                 "(e.g. one of its training recordings).")
+            pref = resolve_reference(folder, voices, opts.pitch_reference)
+            if opts.isolate_reference:
+                U.setup_main(True, False, False)
+            reference = _reference_clip(pref, opts.isolate_reference)
+        target_pitch = pitch.track(U.read(reference)[0], SR)
+        if target_pitch is None:
+            raise ValueError("The target voice clip has too little clear singing to measure its pitch.")
+
     out_dir = (out or folder) / OUT_SUBDIR
     results = []
     for src in files:
@@ -349,16 +371,29 @@ def convert(files: list[Path], folder: Path, engine: str, voice: str, opts: Opti
         print(f"\n🎧 {src.name}", flush=True)
         work = WORK / "songs" / name
         vocals_wav, inst, original = split(src, work, opts.separate)
+        semitones = opts.semitones
+        if target_pitch is not None:
+            print("   octave check…", flush=True)
+            source_pitch = pitch.track(original, SR)
+            if source_pitch is None:
+                res.notes.append("octave check skipped: too little clear singing in the song's vocal")
+                print("   " + res.notes[-1])
+            else:
+                advice = pitch.advise(source_pitch, target_pitch)
+                print(pitch.describe(advice), flush=True)
+                semitones += advice.shift
+                res.notes.append(f"octave check: gap {advice.gap_semitones:+.1f} st → {advice.shift:+d}"
+                                 + (" (borderline)" if advice.borderline else ""))
         print(f"   converting vocal with {engine}…", flush=True)
         if engine == "seedvc":
             converted = seedvc(python, vocals_wav, reference, work / f"seedvc_{label}", singing=opts.singing,
-                               semitones=opts.semitones, steps=opts.steps, cfg_rate=opts.cfg_rate)
+                               semitones=semitones, steps=opts.steps, cfg_rate=opts.cfg_rate)
             res.notes.append(f"Seed-VC {'singing' if opts.singing else 'speech'} model, {opts.steps} steps, "
-                             f"{opts.semitones:+d} semitones")
+                             f"{semitones:+d} semitones")
         else:
-            converted = rvc(python, vocals_wav, pth, index, work / f"rvc_{label}.wav", pitch=opts.semitones,
+            converted = rvc(python, vocals_wav, pth, index, work / f"rvc_{label}.wav", pitch=semitones,
                             index_rate=opts.index_rate, protect=opts.protect)
-            res.notes.append(f"RVC pitch {opts.semitones:+d}, index rate {opts.index_rate if index else 0}, "
+            res.notes.append(f"RVC pitch {semitones:+d}, index rate {opts.index_rate if index else 0}, "
                              f"protect {opts.protect}")
         vc, mix = rebuild(converted, original, inst, opts.vocal_gain_db)
         U.write(final, mix, SR, "PCM_24")
@@ -371,6 +406,25 @@ def convert(files: list[Path], folder: Path, engine: str, voice: str, opts: Opti
             asdict(res) | {"engine": engine, "voice": label, "options": asdict(opts)}, ensure_ascii=False, indent=2))
         print(f"✅ {final}")
     return results
+
+
+def pitch_check(folder: Path, source: str, target: str, out: Path | None = None,
+                isolate: bool = False) -> "pitch.OctaveAdvice | None":
+    """Report-only octave check between two listed files (no conversion)."""
+    voices = scan_voices(folder, out)
+    tracked = []
+    for spec, role in ((source, "source"), (target, "target")):
+        path = resolve_reference(folder, voices, spec)
+        audio = U.read(split(path, WORK / "check" / U.safe_stem(path), isolate)[0])[0]
+        p = pitch.track(audio, SR)
+        if p is None:
+            print(f"⚠️ {path.name}: too little clear singing to measure.")
+            return None
+        print(f"{role}: {path.name}")
+        tracked.append(p)
+    advice = pitch.advise(*tracked)
+    print(pitch.describe(advice))
+    return advice
 
 
 # --------------------------------------------------------------------------- RVC training

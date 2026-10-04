@@ -21,6 +21,7 @@ Or organise it with a `voices/` subfolder (the Drive default, inside the songs f
 
 | File | Role |
 |---|---|
+| `pitch.py` | Optional octave check: pYIN pitch of both vocals → whole-octave shift suggestion (`AUTO_OCTAVE`, or the check-only cell) |
 | `vc.py` | Setup (pinned clones, isolated `uv` venvs), vocal split/rebuild, the two engines, training with Drive mirroring |
 | `Voice_Conversion.ipynb` | Colab form cells: connect Drive, Seed-VC, RVC convert, RVC train, listen |
 | `Voice_Conversion_Kaggle.ipynb` | Kaggle version: reads a read-only Dataset, writes to `/kaggle/working`, `RUN` switches per task, zip cell |
