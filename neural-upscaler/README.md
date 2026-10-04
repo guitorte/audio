@@ -1,5 +1,8 @@
 # 🎚️ Neural Audio Upscaler
 
+> 📖 **New here, or back after a long break? Read [GUIDE.md](GUIDE.md).** It's a step-by-step guide.
+> 🇧🇷 **Guia em português: [GUIDE.pt-BR.md](GUIDE.pt-BR.md)**
+
 Restores songs **without regenerating them**. It's the same recording, with lossy-compression damage repaired and the missing high end rebuilt.
 
 [Open the notebook in Colab](https://colab.research.google.com/github/guitorte/audio/blob/ccr-8be874fb-rdbsnf/neural-upscaler/Neural_Audio_Upscaler.ipynb). It reads songs from a Google Drive folder (default `áudio`) and writes 24-bit WAVs to `áudio/upscaled/`.

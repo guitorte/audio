@@ -52,7 +52,7 @@ Invariants to keep:
 
 ## voice-conversion
 
-**`GUIDE.md` is the user-facing manual.** Keep it in sync whenever cells, settings, defaults or behaviour change, because the user relies on it after months away.
+**`GUIDE.md` and `GUIDE.pt-BR.md` are the user-facing manuals** (the same goes for `neural-upscaler/GUIDE*.md`). Keep both languages in sync whenever cells, settings, defaults or behaviour change, because the user relies on them after months away.
 
 Song → BS-RoFormer split → convert **only the vocal** with Seed-VC or RVC → level-match it to the original vocal → lay it back over the untouched instrumental. Outputs go to `converted/<song>__<voice>__<engine>.wav` plus `_vocals.wav`. Voices live in `<songs folder>/voices/`: audio clips are Seed-VC references, `<name>.pth` (+ `.index`) are RVC models, and subfolders are RVC training sets.
 

@@ -2,6 +2,8 @@
 
 *Written to be read cold, months later. Start at the top; every step says exactly what to click and type.*
 
+🇧🇷 [Versão em português](GUIDE.pt-BR.md)
+
 ---
 
 ## Contents
