@@ -118,7 +118,11 @@ def scan_voices(folder: Path, out: Path | None = None) -> Voices:
     odir.mkdir(parents=True, exist_ok=True)
     refs = U.list_audio(vdir) if vdir.is_dir() else []
     models = {}
-    for d in dict.fromkeys([folder, vdir, odir]):  # output last, so a freshly trained model wins
+    # On Kaggle, models trained in an earlier run live in that run's output,
+    # attached read-only under /kaggle/input/<name>/voices/.
+    attached = sorted(p for p in KAGGLE_INPUT.glob("**/" + VOICES_SUBDIR)
+                      if p.is_dir() and ".training" not in p.parts) if KAGGLE_INPUT.is_dir() else []
+    for d in dict.fromkeys([folder, vdir, *attached, odir]):  # output last, so a freshly trained model wins
         for pth in sorted(d.glob("*.pth")) if d.is_dir() else []:
             idx = pth.with_suffix(".index")
             models[pth.stem] = (pth, idx if idx.exists() else None)
