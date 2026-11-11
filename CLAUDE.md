@@ -11,6 +11,7 @@ Personal music/audio toolbox. Most of it is **Google Colab notebooks backed by s
 | `audio-restoration-pipeline/` | DSP restoration and mastering (spectral gating, EQ, harmonic "frequency restoration", LUFS) with `modules/` and several notebook versions |
 | `neural-upscaler/` | Neural restoration of songs in a Google Drive folder. See its section below |
 | `voice-conversion/` | Swap a song's singer with Seed-VC (zero-shot) or RVC via Applio (convert and train). See its section below |
+| `vocal-lab/` | Workbench for one vocal: split, de-reverb, denoise, upscale, vocal-to-MIDI, analysis, phrase chopper. See its section below |
 | Top-level `*.ipynb` | Older standalone Colab notebooks (stem separator, WAV splitter, song→MIDI, LLM lyrics) |
 | Top-level `*.html` | Self-contained browser MIDI tools (riff/melody generators). Single file each, Tone.js from cdnjs, no build |
 | `upload/`, `images/`, `*.mp3` | User assets. Don't modify, move, or delete them |
@@ -66,6 +67,17 @@ Song → BS-RoFormer split → convert **only the vocal** with Seed-VC or RVC �
 - Both engines run from pinned clones with `cwd` set to the clone. Pass them **absolute paths**.
 - **Applio exits 0 even when a step failed**, printing "success" after an error. Never trust its exit code: `_expect` / `_expect_files` check that each step wrote its output.
 - Training mirrors finished checkpoints to `voices/.training/<name>/` (a file is copied once it's been unchanged for 30 s, and only the newest voice `.pth` is kept). If the local run is gone, `train()` restores the mirror and Applio resumes from `G_/D_`. Always pass `--save-only-latest`: each full checkpoint set is about 1.3 GB.
+
+## vocal-lab
+
+`vocal_lab.py` + `Vocal_Stem_Lab.ipynb` (English). One **active file** (`<work>/active.wav`) flows through the modules; each writes to `<project>/<stage>/`, records its main result in `lab.json`, and by default makes it the new active file. `route()` goes back to a stage. Outputs mirror to `MyDrive/audio/outputs/<project>/`, and `start()` restores `lab.json` from Drive in a new session. Scratch is `/content/vocal_lab`. It imports `../neural-upscaler/upscaler.py` as `U`, like `vc.py`.
+
+- **audio-separator runs as a subprocess** (`run_separator`, through `U.run`), not through its Python API, so its memory is gone before AudioSR loads. One function, `separate()`, covers vocal split, lead/backing, de-reverb and denoise: `MODELS` maps a menu label to `(task, model file)` and `TASKS` maps each model's stem names to ours. Output files are named `<input>_(<Stem>)_<model>.wav`; `_stem()` parses that. Stem names differ per model (`noreverb`, `No Reverb`, `dry`, `other`), and some registry entries list none, so only add a model to `MODELS` after checking its stems. An unknown stem is saved and reported, never guessed.
+- **Run the upscaler after the 44.1 kHz cleaning models**, or they drop the rebuilt highs. `separate()` warns when the active file is above 44.1 kHz.
+- **Upscale** calls `U.setup_audiosr()` / `U.audiosr()` with one job, so it shares the venv and the Mid/Side splice. A mono input comes back mono. FlashSR goes through `flashsr_trial`.
+- **GAME** (`GAME_COMMIT`, weights from the v1.0.0 release zips: small/medium/large) pins `numpy<2`, so it has a `uv` Python 3.12 venv with **CPU torch** (a 30 s clip takes about 20 s on 2 cores). Run `infer.py extract` with `cwd` set to the clone. It writes `<name>.mid` and `<name>.csv` (`onset,offset,pitch` with names like `A#3+7`). Languages: `en`, `ja`, `yue`, `zh`; anything else runs language-neutral. Weights are CC BY-NC-SA 4.0.
+- **Beat This** (`pip install beat-this`) runs in the kernel; its checkpoint (77 MB) downloads from JKU's cloud. `analyze()` falls back to librosa's tempo if it fails, and stores the BPM so `transcribe()` saves its MIDI at that tempo.
+- **Sandbox checks that work here:** GitHub release assets and JKU's cloud are reachable, so GAME, Beat This and audio-separator's models run for real on CPU (keep clips under about 10 s for RoFormer models). `run_separator`, `run_game` and `find_beats` are the seams to fake.
 
 ## Dependency pitfalls (already solved; don't regress)
 
