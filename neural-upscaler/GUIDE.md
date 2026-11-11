@@ -143,9 +143,9 @@ Everything is written straight into your Drive, in `upscaled/` next to your song
 
 | File | What it is |
 |---|---|
-| `upscaled/<song>_upscaled.wav` | the repaired song (24-bit WAV; 48 kHz after AudioSR, otherwise 44.1 kHz) |
+| `upscaled/<song>_upscaled.wav` | the repaired song (24-bit WAV; 48 kHz when AudioSR added highs, otherwise 44.1 kHz. With the vocal split and Apollo both off, a 48 kHz or hi-res source keeps its own rate) |
 | `upscaled/<song>_upscaled.json` | the settings used, plus notes (bandwidth detected, gain changes…) |
-| `upscaled/<song>_parts/vocals.wav` and `instrumental.wav` | the repaired stems, if you ticked `KEEP_PARTS` |
+| `upscaled/<song>_parts/vocals.wav` and `instrumental.wav` | the repaired stems, if you ticked `KEEP_PARTS` (`mix.wav` when only Apollo ran; nothing when both the split and Apollo are off, since it would be a copy of the source) |
 
 - **Notes printed under each result** explain what happened, for example `input bandwidth ≈ 16.0 kHz`, `AudioSR: new highs above 15.7 kHz`, `lowered 2.1 dB to avoid clipping`.
 - "Lowered … dB to avoid clipping" is normal. Decoded MP3s often peak slightly above the maximum, so the song is turned down just enough not to distort.
@@ -189,7 +189,9 @@ Everything is written straight into your Drive, in `upscaled/` next to your song
 | `GPU: ⚠️ none` | no GPU selected | *Runtime ▸ Change runtime type ▸ T4 GPU*, then run cell 1 again |
 | `No file number 7` / `No file name contains '…'` | a typo, or the wrong number | use a name or number from cell 1's list |
 | `already exists (tick OVERWRITE to redo)` | that song was done before | tick `OVERWRITE` |
-| AudioSR prints `already full band, AudioSR skipped` | the song isn't missing any high end | nothing to do. To force it, set `CUTOFF_HZ` |
+| AudioSR prints `already full band, AudioSR skipped` | the song has no sharp MP3-style cut, so there's no clear point to rebuild from. The file is saved exactly as it was before this step | usually nothing to do. To force it, set `CUTOFF_HZ` |
+| a note says `no lossy shelf, but almost nothing above … kHz` | the highs fade out gently instead of being cut sharply, so AudioSR can't find a cut by itself | if the song sounds dull, set `CUTOFF_HZ` to the number in the note and run again with `OVERWRITE` |
+| a note says `resampled from 48 kHz to 44.1 kHz` | the vocal split and Apollo only work at 44.1 kHz | nothing to do. To keep the source's own rate, untick both |
 | hiss or a metallic sheen after AudioSR | AudioSR invented highs that don't suit the song | use the version without AudioSR, or raise `CUTOFF_HZ` |
 | the first run takes a long time | installing tools, and AudioSR's first-time setup plus a several-GB download | normal, once per session |
 | *"Runtime disconnected… no-cost tier"* | Colab's free tier stopped the run | paid compute units |

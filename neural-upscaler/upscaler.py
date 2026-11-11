@@ -23,11 +23,12 @@ import numpy as np
 import soundfile as sf
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from upscaler_dsp import detect_cutoff, rms  # noqa: E402
+from upscaler_dsp import bandwidth, detect_cutoff, rms  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 AUDIO_EXTS = {".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".opus", ".aif", ".aiff", ".wma", ".alac"}
 APOLLO_SR = 44_100
+HINT_BELOW_HZ = 16_000   # a shelf-less file that is empty above less than this gets a CUTOFF_HZ hint
 APOLLO_COMMIT = "e84bcacc59d5455f05d86a5c97dd4aeb3c14dbb6"
 VOCAL_MODEL = "model_bs_roformer_ep_317_sdr_12.9755.ckpt"
 WORK = Path("/content/upscaler_work") if Path("/content").exists() else HERE / "_work"
@@ -141,6 +142,16 @@ def duration(path: Path) -> float:
         return 0.0
 
 
+def sample_rate(path: Path) -> int:
+    """Sample rate of the first audio stream, or 0 when ffprobe can't tell."""
+    out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=sample_rate",
+                          "-of", "csv=p=0", str(path)], capture_output=True, text=True).stdout.strip()
+    try:
+        return int(out.split(",")[0])
+    except ValueError:
+        return 0
+
+
 def excerpt(path: Path, start: float, seconds: float, sr: int) -> np.ndarray:
     """Stereo float excerpt [samples, 2] for listening; the window slides back to fit short songs."""
     start = max(0.0, min(start, duration(path) - seconds))
@@ -216,11 +227,6 @@ def setup_audiosr() -> Path:
         run(["uv", "venv", "-q", "--python", "3.10", AUDIOSR_ENV])
     # Always re-applied: a no-op when satisfied, and it repairs an env built by
     # an older version of this list (e.g. one missing matplotlib).
-    run(["uv", "pip", "install", "-q", "--python", python, *AUDIOSR_PINS])
-    return python
-    if shutil.which("uv") is None:
-        run([sys.executable, "-m", "pip", "install", "-q", "uv"])
-    run(["uv", "venv", "-q", "--python", "3.10", AUDIOSR_ENV])
     run(["uv", "pip", "install", "-q", "--python", python, *AUDIOSR_PINS])
     return python
 
@@ -316,12 +322,25 @@ def process(files: list[Path], folder: Path, opts: Options) -> list[Result]:
         print(f"\n🎧 {src.name}")
         work = WORK / name
         shutil.rmtree(work, ignore_errors=True)
-        mix_wav = decode(src, work / "00_mix.wav")
+        # The vocal split and Apollo need exactly 44.1 kHz. With both off there is
+        # no reason to resample a 48 kHz or hi-res source down and lose its top.
+        src_sr = sample_rate(src)
+        work_sr = APOLLO_SR if (opts.separate or opts.apollo) else max(src_sr, APOLLO_SR)
+        mix_wav = decode(src, work / "00_mix.wav", work_sr)
         mix, sr = read(mix_wav)
         cutoff = detect_cutoff(mix, sr)
-        res.notes.append(f"input bandwidth ≈ {cutoff / 1000:.1f} kHz"
-                         + (" (full band)" if cutoff >= sr / 2 else " (lossy shelf detected)"))
+        if cutoff < sr / 2:
+            res.notes.append(f"input bandwidth ≈ {cutoff / 1000:.1f} kHz (lossy shelf detected)")
+        else:
+            # No cliff is not the same as full band: the highs may fade out gently.
+            top = bandwidth(mix, sr)
+            res.notes.append(f"input bandwidth ≈ {top / 1000:.1f} kHz (full band)" if top >= HINT_BELOW_HZ else
+                             f"no lossy shelf, but almost nothing above {top / 1000:.1f} kHz: AudioSR will skip "
+                             f"this file unless you set CUTOFF_HZ = {int(top)}")
         print("   " + res.notes[-1])
+        if src_sr > sr:
+            res.notes.append(f"resampled from {src_sr / 1000:g} kHz to {sr / 1000:g} kHz for the vocal split / Apollo")
+            print("   " + res.notes[-1])
 
         stems = {"mix": mix}
         if opts.separate:
@@ -338,7 +357,8 @@ def process(files: list[Path], folder: Path, opts: Options) -> list[Result]:
         gain = 10 ** (opts.vocal_gain_db / 20)
         combined = sum(a * (gain if s == "vocals" else 1.0) for s, a in stems.items())
         stage_wav = write(work / "30_restored.wav", combined, sr)
-        if opts.keep_parts:
+        # With no split and no Apollo the only "part" is a copy of the source.
+        if opts.keep_parts and (opts.separate or opts.apollo):
             for stem, audio in stems.items():
                 write(out_dir / f"{name}_parts" / f"{stem}.wav", audio, sr, "PCM_24")
         pending.append((res, name, stage_wav, final, work))
@@ -349,12 +369,16 @@ def process(files: list[Path], folder: Path, opts: Options) -> list[Result]:
         jobs = [{"in": str(w), "out": str(wk / "40_audiosr.wav"), "cutoff_hz": opts.cutoff_hz}
                 for _, _, w, _, wk in pending]
         audiosr(python, jobs, opts.audiosr_steps, opts.audiosr_guidance, opts.seed)
-        pending = [(r, n, wk / "40_audiosr.wav", f, wk) for r, n, _, f, wk in pending]
-        for (r, *_), job in zip(pending, jobs):
+        done = []
+        for (r, n, stage_wav, f, wk), job in zip(pending, jobs):
             meta = Path(job["out"]).with_suffix(".json")
             cut = json.loads(meta.read_text()).get("cutoff_hz") if meta.exists() else None
             r.notes.append(f"AudioSR: new highs above {cut / 1000:.1f} kHz" if cut
-                           else "AudioSR skipped: already full band")
+                           else "AudioSR skipped: no lossy shelf to rebuild above")
+            # A skipped file keeps its pre-AudioSR audio, so it really is left
+            # untouched instead of being resampled to 48 kHz for nothing.
+            done.append((r, n, Path(job["out"]) if cut else stage_wav, f, wk))
+        pending = done
 
     for res, name, stage_wav, final, work in pending:
         if reference is not None:
@@ -367,7 +391,8 @@ def process(files: list[Path], folder: Path, opts: Options) -> list[Result]:
             peak = float(np.abs(audio).max())
             if peak > 0.999:
                 audio = audio * (0.999 / peak)
-                res.notes.append(f"lowered {db(peak / 0.999):.1f} dB to avoid clipping")
+                if db(peak / 0.999) >= 0.05:   # don't report a change that prints as "0.0 dB"
+                    res.notes.append(f"lowered {db(peak / 0.999):.1f} dB to avoid clipping")
         write(final, audio, sr, "PCM_24")
         res.output = str(final)
         (final.with_suffix(".json")).write_text(json.dumps(asdict(res) | {"options": asdict(opts)},

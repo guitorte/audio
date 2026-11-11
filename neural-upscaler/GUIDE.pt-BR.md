@@ -143,9 +143,9 @@ Tudo vai direto para o seu Drive, em `upscaled/`, ao lado das suas músicas:
 
 | Arquivo | O que é |
 |---|---|
-| `upscaled/<música>_upscaled.wav` | a música restaurada (WAV 24 bits; 48 kHz depois do AudioSR, senão 44,1 kHz) |
+| `upscaled/<música>_upscaled.wav` | a música restaurada (WAV 24 bits; 48 kHz quando o AudioSR criou agudos, senão 44,1 kHz. Com a separação de voz e o Apollo desligados, um arquivo de 48 kHz ou hi-res mantém a taxa original) |
 | `upscaled/<música>_upscaled.json` | as configurações usadas, mais observações (banda detectada, ajustes de volume…) |
-| `upscaled/<música>_parts/vocals.wav` e `instrumental.wav` | os stems restaurados, se você marcou `KEEP_PARTS` |
+| `upscaled/<música>_parts/vocals.wav` e `instrumental.wav` | os stems restaurados, se você marcou `KEEP_PARTS` (`mix.wav` quando só o Apollo rodou; nada quando a separação e o Apollo estão desligados, pois seria uma cópia do original) |
 
 - **As observações abaixo de cada resultado** explicam o que aconteceu, por exemplo:
   - `input bandwidth ≈ 16.0 kHz`: os agudos do arquivo de entrada vão até cerca de 16 kHz;
@@ -192,7 +192,9 @@ Tudo vai direto para o seu Drive, em `upscaled/`, ao lado das suas músicas:
 | `GPU: ⚠️ none` | nenhuma GPU selecionada | *Ambiente de execução ▸ Alterar o tipo de ambiente de execução ▸ GPU T4*, e rode a célula 1 de novo |
 | `No file number 7` / `No file name contains '…'` | erro de digitação, ou número errado | use um nome ou número da lista da célula 1 |
 | `already exists (tick OVERWRITE to redo)` | aquela música já foi feita | marque `OVERWRITE` |
-| O AudioSR mostra `already full band, AudioSR skipped` | a música não tem agudos faltando | nada a fazer. Para forçar, use `CUTOFF_HZ` |
+| O AudioSR mostra `already full band, AudioSR skipped` | a música não tem um corte seco, típico de MP3, então não há um ponto claro a partir do qual reconstruir. O arquivo é salvo exatamente como estava antes dessa etapa | normalmente nada a fazer. Para forçar, use `CUTOFF_HZ` |
+| uma observação diz `no lossy shelf, but almost nothing above … kHz` | os agudos somem aos poucos em vez de serem cortados de uma vez, então o AudioSR não acha o corte sozinho | se a música soa opaca, coloque em `CUTOFF_HZ` o número da observação e rode de novo com `OVERWRITE` |
+| uma observação diz `resampled from 48 kHz to 44.1 kHz` | a separação de voz e o Apollo só trabalham em 44,1 kHz | nada a fazer. Para manter a taxa original, desmarque os dois |
 | chiado ou brilho metálico depois do AudioSR | o AudioSR inventou agudos que não combinam com a música | use a versão sem AudioSR, ou aumente `CUTOFF_HZ` |
 | a primeira execução demora muito | instalação das ferramentas, e a primeira preparação do AudioSR com um download de vários GB | normal, uma vez por sessão |
 | *"Ambiente de execução desconectado… nível sem custo"* | o plano gratuito do Colab interrompeu a execução | unidades de computação pagas |
