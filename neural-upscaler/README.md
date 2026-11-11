@@ -21,4 +21,6 @@ song ─► ① BS-RoFormer ─┬─ vocals ──────────► �
 
 Files: `upscaler.py` (pipeline, main env) · `audiosr_worker.py` (AudioSR venv) · `upscaler_dsp.py` (shared helpers: shelf detection, crossover, crossfades).
 
+**Experimental:** [`FlashSR_Trial.ipynb`](https://colab.research.google.com/github/guitorte/audio/blob/ccr-8be874fb-rdbsnf/neural-upscaler/FlashSR_Trial.ipynb) (logic in `flashsr_trial.py`) restores a short excerpt of one song with [FlashSR](https://github.com/jakeoneijk/FlashSR_Inference), a one-step candidate to replace AudioSR, and can time it against AudioSR. It is separate from the pipeline above and changes nothing in it. FlashSR's repository states no licence.
+
 Model weights keep their own licences. Apollo and AudioSR are research releases; check their terms before any commercial use.
