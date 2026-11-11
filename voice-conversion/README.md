@@ -1,6 +1,7 @@
 # 🎤 voice-conversion
 
 > 📖 **New here, or back after a long break? Read [GUIDE.md](GUIDE.md).** It's a step-by-step guide to setup, conversion, training and troubleshooting.
+> 🇧🇷 **Guia em português: [GUIDE.pt-BR.md](GUIDE.pt-BR.md)**
 
 Swap the singer in a song with another voice and keep the instrumental, using [Seed-VC](https://github.com/Plachtaa/seed-vc) (zero-shot) or RVC through [Applio](https://github.com/IAHispano/Applio) (convert and train).
 

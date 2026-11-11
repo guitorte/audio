@@ -36,6 +36,30 @@ def detect_cutoff(audio, sr):
     return float(max(freqs[j] - 300, 2000))
 
 
+def bandwidth(audio, sr, floor_db=60.0, band_hz=500.0):
+    """Highest frequency that still carries real content.
+
+    ``detect_cutoff`` only sees a cliff. A file whose highs fade out gently
+    (or stop below 4 kHz, outside its search range) has no cliff, yet may be
+    just as empty up top. This walks down from Nyquist in ``band_hz`` bands and
+    returns the top of the first one whose median level is within ``floor_db``
+    of the 1-4 kHz midrange. The median keeps a lone whistle (a 19 kHz pilot
+    tone, CRT whine) from counting as content.
+    """
+    mono = audio.mean(axis=1) if audio.ndim == 2 else audio
+    if rms(mono) < 1e-6:
+        return sr / 2
+    freqs, psd = welch(mono, fs=sr, nperseg=8192)
+    level = 10 * np.log10(psd + 1e-20)
+    threshold = np.median(level[(freqs > 1000) & (freqs < 4000)]) - floor_db
+    top = sr / 2
+    while top - band_hz > 1000:
+        if np.median(level[(freqs > top - band_hz) & (freqs <= top)]) >= threshold:
+            return float(top)
+        top -= band_hz
+    return float(top)
+
+
 def band_rms(signal, sr, lo, hi):
     sos = butter(4, [lo, min(hi, 0.99 * sr / 2)], btype="bandpass", fs=sr, output="sos")
     return rms(sosfiltfilt(sos, signal, axis=0))
