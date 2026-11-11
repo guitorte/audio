@@ -30,6 +30,7 @@ from upscaler_dsp import band_rms, chunk_starts, crossfade, crossover, detect_cu
 SR = 48_000
 CHUNK = 245_760            # 5.12 s: the only length FlashSR accepts
 OVERLAP = int(0.5 * SR)
+TRAINED_UP_TO_HZ = 16_000  # the paper trains on inputs sampled at 4-32 kHz, i.e. cut at 16 kHz or lower
 FLASHSR_REPO = "https://github.com/jakeoneijk/FlashSR_Inference.git"
 FLASHSR_COMMIT = "2292814a7ef74f61a5479c8d96e653d2f90f369d"
 WEIGHTS_REPO = "jakeoneijk/FlashSR_weights"   # a Hugging Face *dataset* repo, about 3.3 GB in all
@@ -150,6 +151,28 @@ def clips(res: dict) -> dict:
     return out
 
 
+def _free_ram_gb() -> float:
+    try:
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1]) / 1e6
+    except OSError:
+        pass
+    return float("nan")
+
+
+def _release_memory() -> None:
+    """Give freed model memory back to the system, not just to Python."""
+    import ctypes
+    import gc
+    import torch
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    with contextlib.suppress(OSError, AttributeError):
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+
+
 def _save(path: Path, audio: np.ndarray) -> str:
     peak = float(np.abs(audio).max())
     U.write(path, audio * (0.999 / peak) if peak > 0.999 else audio, SR, "PCM_24")
@@ -173,8 +196,34 @@ def trial(src: Path, folder: Path, start: float = 45.0, seconds: float = 20.0, c
         raise ValueError(f"'{src.name}' has no lossy shelf in this excerpt, so there is nothing to rebuild. "
                          "Pick an MP3/AAC song, or set CUTOFF_HZ (e.g. 16000) to force it.")
     print(f"🎧 {src.name}: {clip_s:.1f} s excerpt, new highs above {cutoff / 1000:.1f} kHz")
+    if cutoff > TRAINED_UP_TO_HZ:
+        print(f"   ⚠️ this song already reaches {cutoff / 1000:.1f} kHz. FlashSR was trained on audio cut at "
+              f"{TRAINED_UP_TO_HZ / 1000:.0f} kHz or lower, and what is missing here is at the edge of hearing, "
+              "so this run says little about its sound. A duller MP3 is a better test.")
     res = {"source": str(src), "start": start, "seconds": round(clip_s, 2), "cutoff_hz": cutoff,
            "before": _save(out_dir / f"{name}_before.wav", before)}
+    summary = out_dir / f"{name}_trial.json"
+
+    if compare_audiosr:
+        # First, while this notebook's own process is still small: AudioSR needs
+        # most of Colab's system RAM just to load, and is killed if FlashSR's
+        # leftovers are in the way. A failure here must not cost the FlashSR run.
+        print(f"\n   AudioSR on the same excerpt, for comparison… (free system RAM: {_free_ram_gb():.1f} GB)")
+        work = U.WORK / "flashsr_trial" / name
+        job = {"in": str(U.write(work / "excerpt.wav", before, SR)), "out": str(work / "audiosr.wav"),
+               "cutoff_hz": cutoff}
+        try:
+            python = U.setup_audiosr()
+            t = time.time()
+            U.audiosr(python, [job], audiosr_steps, 3.5, seed)
+            res["audiosr_run_s"] = round(time.time() - t, 1)   # includes loading AudioSR's model
+            res["audiosr"] = _save(out_dir / f"{name}_audiosr.wav", U.read(Path(job["out"]))[0])
+        except RuntimeError as err:
+            res["audiosr_error"] = str(err).splitlines()[0]
+            print(f"   ⚠️ AudioSR did not finish: {res['audiosr_error']}"
+                  + ("\n      exit -9 means Colab stopped it for using too much system RAM."
+                     if "exit -9" in res["audiosr_error"] else "")
+                  + "\n      Carrying on with FlashSR alone.\n")
 
     t = time.time()
     model, device = load(setup())
@@ -191,27 +240,17 @@ def trial(src: Path, folder: Path, start: float = 45.0, seconds: float = 20.0, c
     res["flashsr_run_s"] = round(time.time() - t, 1)
     res["flashsr"] = _save(out_dir / f"{name}_flashsr.wav", after)
     del model
-    if device != "cpu":
-        torch.cuda.empty_cache()   # hand the memory back before AudioSR starts
+    _release_memory()   # so a second run in the same session starts as light as the first
 
-    if compare_audiosr:
-        print("\n   AudioSR on the same excerpt, for comparison…")
-        work = U.WORK / "flashsr_trial" / name
-        job = {"in": str(U.write(work / "excerpt.wav", before, SR)), "out": str(work / "audiosr.wav"),
-               "cutoff_hz": cutoff}
-        python = U.setup_audiosr()
-        t = time.time()
-        U.audiosr(python, [job], audiosr_steps, 3.5, seed)
-        res["audiosr_run_s"] = round(time.time() - t, 1)   # includes loading AudioSR's model
-        res["audiosr"] = _save(out_dir / f"{name}_audiosr.wav", U.read(Path(job["out"]))[0])
-
-    (out_dir / f"{name}_trial.json").write_text(json.dumps(res, ensure_ascii=False, indent=2))
+    summary.write_text(json.dumps(res, ensure_ascii=False, indent=2))
     per_min = res["flashsr_run_s"] / clip_s * 60
     print("\n" + "═" * 60)
     print(f"FlashSR: loaded in {res['flashsr_load_s']} s, restored {clip_s:.1f} s of audio in {res['flashsr_run_s']} s"
           f" (≈ {per_min:.0f} s per minute of music)"
           + (f", peak GPU memory {res['flashsr_vram_gb']} GB" if "flashsr_vram_gb" in res else ""))
-    if compare_audiosr:
+    if "audiosr_run_s" in res:
         print(f"AudioSR: {res['audiosr_run_s']} s for the same excerpt, model loading included")
+    elif "audiosr_error" in res:
+        print("AudioSR: did not finish (see the warning above)")
     print(f"Saved in {out_dir}")
     return res
