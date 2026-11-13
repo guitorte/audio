@@ -6,7 +6,7 @@ Personal music/audio toolbox. Most of it is **Google Colab notebooks backed by s
 
 | Path | What it is |
 |---|---|
-| `music-to-midi/` | Main song → stems (Demucs) → multi-track MIDI workflow. `modules/` package, `run.py` CLI, `notebooks/Song_to_Stems_to_MIDI.ipynb` |
+| `music-to-midi/` | Main song → stems (Demucs) → multi-track MIDI workflow. `modules/` package, `run.py` CLI, `notebooks/Song_to_Stems_to_MIDI.ipynb`. `modules/bakeoff.py` + `notebooks/MIDI_Engine_Bakeoff.ipynb` compare alternative engines on one excerpt (see its section below) |
 | `stem-to-midi/` | Earlier single-stem → MIDI project (Basic Pitch, ADTOF drums), now folded into `music-to-midi/` |
 | `audio-restoration-pipeline/` | DSP restoration and mastering (spectral gating, EQ, harmonic "frequency restoration", LUFS) with `modules/` and several notebook versions |
 | `neural-upscaler/` | Neural restoration of songs in a Google Drive folder. See its section below |
@@ -66,10 +66,24 @@ Song → BS-RoFormer split → convert **only the vocal** with Seed-VC or RVC �
 - **Applio exits 0 even when a step failed**, printing "success" after an error. Never trust its exit code: `_expect` / `_expect_files` check that each step wrote its output.
 - Training mirrors finished checkpoints to `voices/.training/<name>/` (a file is copied once it's been unchanged for 30 s, and only the newest voice `.pth` is kept). If the local run is gone, `train()` restores the mirror and Applio resumes from `G_/D_`. Always pass `--save-only-latest`: each full checkpoint set is about 1.3 GB.
 
+## music-to-midi bake-off
+
+`modules/bakeoff.py` runs every engine on the same excerpt and scores them. Separation: htdemucs_6s and BS-RoFormer SW, both through `audio-separator`. Transcription: Basic Pitch (with `transcribe.STEM_PRESETS`) and ADTOF on both separators' stems, GAME on vocals and ADT_STR on drums from the best separator, MuScriptor on the full mix. It imports `../../neural-upscaler/upscaler.py` as `U` (Drive lookup, `select_files`, `safe_stem`, `run`, `venv_env`), like `vc.py`.
+
+- State (`RUNS`, `CANDIDATES`, `STEM_FILES`) is module-level. `start()` resets it and decodes the excerpt into `WORK/runs/<song>__<start>s+<len>s/`, so stems are reused for the same excerpt and never across songs.
+- Every engine call goes through `measure()`, which records time, torch peak VRAM and errors without raising, so one broken engine doesn't stop the run.
+- Quality without ground truth is proxied: chroma-CENS cosine between the audio and a sine render of the MIDI, drum onset F1 against librosa onsets, and the stem's RMS (Basic Pitch writes notes into near-silent bleed stems). With a reference MIDI, `note_f1` gives real mir_eval note F1.
+- Results go to `<Drive folder>/midi-bakeoff/<run tag>/`; an existing folder is skipped unless `OVERWRITE`.
+
 ## Dependency pitfalls (already solved; don't regress)
 
 - **basic-pitch** on Python ≥ 3.12: install with `--no-deps` plus `onnxruntime` (ONNX backend). Plain `pip install basic-pitch` drags in TensorFlow/tflite, which have no wheels for these versions.
+- **resampy < 0.4.3** imports `pkg_resources`, which setuptools 82 removed. basic-pitch works with `resampy>=0.4.3` (the bake-off installs that).
 - **ADTOF-pytorch** is GitHub-only: `pip install git+https://github.com/xavriley/ADTOF-pytorch.git`.
+- **audio-separator** imports `audioread` without declaring it; install it alongside.
+- **GAME** (OpenVPI) releases only ONNX weights (`GAME-1.0.3-{small,medium,large}-onnx.zip`), and its own `infer.py` needs a PyTorch checkpoint. `bakeoff.game()` runs the five graphs itself as in GAME's `ONNX.md`: encoder → `dur2bd` → segmenter D3PM loop (`t = i/nsteps`, feeding `boundaries` back as `prev_boundaries`) → `bd2dur` → estimator, on chunks from GAME's `slicer2.py` (loaded from `GAME_COMMIT`) with its CLI settings. The segmenter samples, so runs differ slightly.
+- **ADT_STR** pins Python < 3.13, torch 2.8 and torchcodec 0.7, so it runs in a `uv` Python 3.12 venv (`ADT_STR_PINS`, cu126 torch on GPU). Its Hugging Face repo holds the code plus three ~280 MB variants; the worker downloads only the chosen one.
+- **MuScriptor** weights are gated (accept the CC BY-NC license, then a `HF_TOKEN` Colab secret; `bakeoff.ensure_hf_token()`). Its API is `TranscriptionModel.load_model(size)` + `transcribe_and_postprocess()`, which returns MIDI bytes; the model card's `transcribe_to_midi` doesn't exist in 0.4. Tempo detection downloads beat_this weights from cloud.cp.jku.at.
 - **AudioSR 0.0.7** pins numpy 1.23.5, librosa 0.9.2, and transformers 4.30.2, which can't share Colab's environment. It runs in an isolated `uv` Python 3.10 venv. `upscaler.py::AUDIOSR_PINS` adds three pins of its own:
   - `torch==2.5.1`: before `torch.load` defaulted to `weights_only=True`.
   - `setuptools<70`: librosa 0.9.2 imports `pkg_resources`.
@@ -88,6 +102,7 @@ There are no tests and usually no GPU or Hugging Face access in the dev sandbox,
 - Smoke-test notebooks by `exec`-ing their code cells with a stubbed `google.colab`.
 - **AudioSR's real code runs without Hugging Face.** Stub `transformers.RobertaTokenizer.from_pretrained` (return `None`) and `RobertaConfig.from_pretrained` (return `cls()`), then replace `audiosr.build_model` with one that builds `audiosr.pipeline.LatentDiffusion(**default_audioldm_config("basic")["model"]["params"])` on CPU with random weights. Run the worker with `--steps 2`. To inject the stub into a worker launched through `venv_env()`, which strips `PYTHONPATH`, use a `.pth` file in the scratch venv's site-packages, gated by an env var.
 - **Seed-VC and Applio also run offline with random weights.** For Seed-VC, a `.pth` hook gated by an env var stubs `hf_utils.load_custom_model_from_hf`, `modules.commons.load_checkpoint`, BigVGAN, and Whisper (random `WhisperConfig` at whisper-small size), and uses the repo's bundled `campplus_cn_common.bin`. Pass `--fp16 False` on CPU. For Applio, save random `rmvpe.pt` (`E2E(4, 1, (2, 2))`) and contentvec (`HubertModelWithFinalProj(HubertConfig(classifier_proj_size=256))`) into `rvc/models/`. Training with `--no-pretrained` then produces `G_/D_` files that can stand in as `rvc/models/pretraineds/hifi-gan/f0G40k.pth` / `f0D40k.pth`. This runs the whole preprocess → extract → train → index → infer flow on CPU.
+- **MuScriptor runs offline with random weights:** build `muscriptor.transcription_model._build_model(cpu, _ModelConfig(dim=64, num_heads=2, num_layers=2, card=1395))`, save its `state_dict` as `model.safetensors` with a matching `config.json` (`dim`, `num_heads`, `num_layers`, `card`), and patch `TranscriptionModel.load_model` to load that path. GAME's ONNX zips, ADT_STR's weights and the audio-separator models usually download fine in the sandbox.
 - **Test launchers in Colab's environment:** set `MPLBACKEND=module://matplotlib_inline.backend_inline` and `PYTHONPATH=/env/python` in the parent process.
 - Say plainly which parts were only mock-tested. The first real model run happens in Colab.
 - `music-to-midi` can also run locally: `cd music-to-midi && python run.py song.mp3 -o output/`.

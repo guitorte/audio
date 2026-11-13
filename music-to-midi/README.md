@@ -111,6 +111,32 @@ Para cada stem (e para o MIDI consolidado), o pipeline grava em `analysis/`:
 O roteamento de engine e os presets por instrumento vêm do projeto irmão
 [`stem-to-midi`](../stem-to-midi/) (mesmo dispatcher e `STEM_PRESETS`).
 
+## Comparar engines (bake-off)
+
+`notebooks/MIDI_Engine_Bakeoff.ipynb` (lógica em `modules/bakeoff.py`) roda
+alternativas às engines acima no **mesmo trecho** de uma música e compara as
+saídas lado a lado:
+
+| Etapa | Atual | Alternativas testadas |
+|---|---|---|
+| Separação | htdemucs_6s | **BS-RoFormer SW** (6 stems, via `audio-separator`) |
+| Voz | Basic Pitch | **GAME** (OpenVPI, canto → notas, pesos ONNX) |
+| Bateria | ADTOF | **ADT_STR** (2026, com velocity; ambiente Python 3.12 próprio) |
+| Tudo | — | **MuScriptor** (Kyutai × Mirelo, mix inteiro → multi-track, pesos restritos) |
+
+Ele mede tempo e memória de GPU de cada engine, calcula aproximações de
+qualidade (concordância de croma com o stem e com o mix, ataques de bateria,
+volume do stem), mostra piano rolls lado a lado e deixa ouvir cada MIDI. Com um
+MIDI de referência que bata com a música (projeto da DAW, export do Suno…), dá
+também a acurácia real (F1 de notas, padrão mir_eval). As músicas vêm da pasta
+do Drive (padrão `áudio`, como nos outros notebooks) e os resultados vão para
+`<pasta>/midi-bakeoff/<música>__<início>s+<duração>s/`.
+
+O MuScriptor precisa de um token do Hugging Face no segredo `HF_TOKEN` do Colab,
+depois de aceitar a licença em
+[MuScriptor/muscriptor-medium](https://huggingface.co/MuScriptor/muscriptor-medium).
+Sem ele, o notebook só pula essa engine.
+
 ## Uso no Colab (recomendado)
 
 Abra `notebooks/Song_to_Stems_to_MIDI.ipynb` (badge no topo do notebook),
@@ -173,6 +199,14 @@ instalar `basic-pitch --no-deps` + `onnxruntime` e cair no backend **ONNX**
 - **ADTOF-pytorch:** porte de [ADTOF](https://github.com/MZehren/ADTOF)
   (AGPL-3.0). Use o stem `drums` apenas se aceita a AGPL.
 
+Só no bake-off:
+
+- **MuScriptor:** código MIT, pesos CC BY-NC 4.0 (uso não comercial).
+- **GAME:** código MIT; os pesos parecem ser CC BY-NC-SA 4.0 (segundo um
+  espelho no Hugging Face; a página oficial do release não foi conferida).
+- **ADT_STR:** CC BY-SA 4.0 (declarado no `pyproject.toml` do projeto).
+- **BS-RoFormer SW / htdemucs_6s:** baixados pelo `audio-separator` (MIT).
+
 ## Estrutura
 
 ```
@@ -188,7 +222,9 @@ music-to-midi/
 │   ├── transcribe.py                       # 1 stem → MIDI (Basic Pitch / ADTOF)
 │   ├── batch.py                            # stems → MIDI multi-track
 │   ├── analyze.py                          # piano roll PNG + MIDI-TEXT (+ text_to_midi)
-│   └── pipeline.py                         # song_to_midi() (cola tudo)
+│   ├── pipeline.py                         # song_to_midi() (cola tudo)
+│   └── bakeoff.py                          # compara engines alternativas num trecho
 └── notebooks/
-    └── Song_to_Stems_to_MIDI.ipynb         # workflow único (Colab)
+    ├── Song_to_Stems_to_MIDI.ipynb         # workflow único (Colab)
+    └── MIDI_Engine_Bakeoff.ipynb           # bake-off de engines (Colab)
 ```
