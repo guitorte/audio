@@ -12,3 +12,4 @@ _demucs_raw/
 # keep the input folder placeholder, ignore the audio dropped into it
 !input/
 !input/README.txt
+_work/
