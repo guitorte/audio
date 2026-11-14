@@ -73,7 +73,8 @@ Song → BS-RoFormer split → convert **only the vocal** with Seed-VC or RVC �
 - State (`RUNS`, `CANDIDATES`, `STEM_FILES`) is module-level. `start()` resets it and decodes the excerpt into `WORK/runs/<song>__<start>s+<len>s/`, so stems are reused for the same excerpt and never across songs.
 - Every engine call goes through `measure()`, which records time, torch peak VRAM and errors without raising, so one broken engine doesn't stop the run.
 - Quality without ground truth is proxied: chroma-CENS cosine between the audio and a sine render of the MIDI, drum onset F1 against librosa onsets, and the stem's RMS (Basic Pitch writes notes into near-silent bleed stems). With a reference MIDI, `note_f1` gives real mir_eval note F1.
-- Results go to `<Drive folder>/midi-bakeoff/<run tag>/`; an existing folder is skipped unless `OVERWRITE`.
+- **Stems are kept at true level** so they sum to the excerpt: `separate()` feeds audio-separator the mix at 0.5 peak with `normalization_threshold=1.0` (otherwise it scales loud stems down one by one), divides the stems back and stores them as float WAV, like `upscaler.separate_vocals`. A `.true_level` marker gates reuse of cached stems.
+- Results go to `<Drive folder>/midi-bakeoff/<run tag>/`. `save_outputs()` skips each file that already exists unless `OVERWRITE`, so stems can be added after the MIDIs. `export_stems()` writes `stems/<separator>/<stem>.wav|flac` in 24-bit; if any stem would clip, all of that separator's stems get the same gain cut, so they still sum to the mix.
 
 ## Dependency pitfalls (already solved; don't regress)
 
