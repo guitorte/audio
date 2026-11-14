@@ -241,28 +241,48 @@ _STEM_RE = re.compile(r"_\(([^)]+)\)_")
 
 
 def separate(mix: Path, name: str) -> dict[str, Path]:
-    """Separate with audio-separator into ``RUN_DIR/stems/<name>/<stem>.wav``."""
+    """Separate with audio-separator into ``RUN_DIR/stems/<name>/<stem>.wav``.
+
+    The stems are kept at their true level, so they sum back to the mix:
+    audio-separator scales any stem peaking above its threshold down on its
+    own, so the input goes in at 0.5 peak with the threshold at 1.0 (nothing
+    gets rescaled) and each stem is scaled back afterwards and written as
+    32-bit float WAV. Same approach as ``upscaler.separate_vocals``.
+    """
+    import soundfile as sf
+
     out_dir = RUN_DIR / "stems" / name
+    marker = out_dir / ".true_level"
     existing = {p.stem: p for p in out_dir.glob("*.wav") if p.stem in STEMS}
-    if len(existing) == len(STEMS):
+    if len(existing) == len(STEMS) and marker.exists():
         print(f"[{name}] reaproveitando os stems em {out_dir}")
         return existing
     out_dir.mkdir(parents=True, exist_ok=True)
     stems: dict[str, Path] = {}
     with measure(name, "mix", name, audio_seconds(mix)) as info:
         from audio_separator.separator import Separator
-        sep = Separator(output_dir=str(out_dir), model_file_dir=str(MODELS), output_format="WAV",
-                        log_level=30, use_autocast=device() == "cuda")
+        y, sr = sf.read(str(mix), always_2d=True, dtype="float32")
+        scale = 0.5 / (float(np.abs(y).max()) or 1.0)
+        tmp = out_dir / "_raw"
+        shutil.rmtree(tmp, ignore_errors=True)
+        tmp.mkdir()
+        scaled = tmp / "input.wav"
+        sf.write(str(scaled), y * scale, sr, subtype="FLOAT")
+        sep = Separator(output_dir=str(tmp), model_file_dir=str(MODELS), output_format="WAV",
+                        normalization_threshold=1.0, log_level=30,
+                        use_autocast=device() == "cuda")
         t0 = time.time()
         sep.load_model(model_filename=SEPARATORS[name])
         info["load_seconds"] = time.time() - t0
-        for f in sep.separate(str(mix)):
-            f = out_dir / Path(f).name
-            m = _STEM_RE.search(f.name)
+        for f in sep.separate(str(scaled)):
+            m = _STEM_RE.search(Path(f).name)
             stem = m.group(1).lower() if m else None
             if stem in STEMS:
-                f.rename(out_dir / f"{stem}.wav")
+                s_y, s_sr = sf.read(str(tmp / Path(f).name), always_2d=True, dtype="float32")
+                sf.write(str(out_dir / f"{stem}.wav"), s_y / scale, s_sr, subtype="FLOAT")
                 stems[stem] = out_dir / f"{stem}.wav"
+        shutil.rmtree(tmp, ignore_errors=True)
+        marker.touch()
         info["path"] = str(out_dir)
         del sep
     return stems
@@ -775,22 +795,72 @@ def systems_table(systems_pm: dict, mix: Path, reference_midi: str | None = None
     return pd.DataFrame(rows)
 
 
-def save_outputs(dst: Path, systems_pm: dict, tables: dict, overwrite: bool = False) -> Path | None:
-    """Copy every MIDI and the tables to ``dst``. An existing folder is left alone unless ``overwrite``."""
-    if dst.exists() and any(dst.iterdir()) and not overwrite:
-        print(f"⏭️ {dst} já existe: nada foi gravado. Marque OVERWRITE para substituir.")
-        return None
-    dst.mkdir(parents=True, exist_ok=True)
-    (dst / "per_stem").mkdir(exist_ok=True)
+def export_stems(dst: Path, fmt: str = "wav", overwrite: bool = False) -> list[Path]:
+    """Write every separator's stems to ``dst/<separator>/<stem>.<fmt>`` (24-bit WAV or FLAC).
+
+    The stems are at true level. If one would clip in 24-bit, all stems of that
+    separator are lowered by the same amount, so they still sum to the mix.
+    Existing files are kept unless ``overwrite``.
+    """
+    import soundfile as sf
+    if fmt not in ("wav", "flac"):
+        raise ValueError(f"formato de stem desconhecido: {fmt!r} (use 'wav' ou 'flac')")
+    written: list[Path] = []
+    for sep, stems in STEM_FILES.items():
+        out = dst / sep
+        targets = {stem: out / f"{stem}.{fmt}" for stem in stems}
+        todo = {k: p for k, p in targets.items() if overwrite or not p.exists()}
+        if not todo:
+            continue
+        audio = {k: sf.read(str(stems[k]), always_2d=True, dtype="float32") for k in stems}
+        peak = max(float(np.abs(y).max()) for y, _ in audio.values())
+        gain = 1.0 if peak <= 0.999 else 0.999 / peak
+        if gain < 1.0:
+            print(f"[{sep}] stems abaixados {20 * np.log10(gain):.1f} dB juntos para não clipar "
+                  "(continuam somando o mix, nesse volume).")
+        out.mkdir(parents=True, exist_ok=True)
+        for k, p in todo.items():
+            y, sr = audio[k]
+            sf.write(str(p), y * gain, sr, subtype="PCM_24", format=fmt.upper())
+            written.append(p)
+    return written
+
+
+def save_outputs(dst: Path, systems_pm: dict, tables: dict, overwrite: bool = False,
+                 stems: str | None = None) -> list[Path]:
+    """Write the MIDIs, the tables and optionally the stems (``stems='wav'|'flac'``) to ``dst``.
+
+    Files that already exist are kept unless ``overwrite``, so stems can be
+    added to an earlier save without touching it. Returns the files written.
+    """
+    written: list[Path] = []
+    kept = 0
+
+    def put(path: Path, write) -> None:
+        nonlocal kept
+        if path.exists() and not overwrite:
+            kept += 1
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write(path)
+        written.append(path)
+
     for f in (RUN_DIR / "midi").glob("*.mid"):
-        shutil.copy2(f, dst / "per_stem" / f.name)
+        put(dst / "per_stem" / f.name, lambda p, f=f: shutil.copy2(f, p))
     for name, pm in systems_pm.items():
         safe = re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("_")
-        pm.write(str(dst / f"{safe}.mid"))
+        put(dst / f"{safe}.mid", lambda p, pm=pm: pm.write(str(p)))
     for name, df in tables.items():
-        df.to_csv(dst / f"{name}.csv", index=False)
-    print(f"salvo em {dst}")
-    return dst
+        put(dst / f"{name}.csv", lambda p, df=df: df.to_csv(p, index=False))
+    if stems:
+        if not STEM_FILES:
+            print("⚠️ Não há stems nesta sessão: rode a célula de separação antes de salvar.")
+        stem_files = export_stems(dst / "stems", stems, overwrite)
+        written += stem_files
+        kept += sum(len(v) for v in STEM_FILES.values()) - len(stem_files)
+    print(f"salvo em {dst}: {len(written)} arquivo(s) novo(s)"
+          + (f", {kept} já existente(s) mantido(s) (marque OVERWRITE para substituir)" if kept else ""))
+    return written
 
 
 # --------------------------------------------------------------------------- reporting

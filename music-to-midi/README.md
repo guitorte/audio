@@ -130,7 +130,11 @@ volume do stem), mostra piano rolls lado a lado e deixa ouvir cada MIDI. Com um
 MIDI de referência que bata com a música (projeto da DAW, export do Suno…), dá
 também a acurácia real (F1 de notas, padrão mir_eval). As músicas vêm da pasta
 do Drive (padrão `áudio`, como nos outros notebooks) e os resultados vão para
-`<pasta>/midi-bakeoff/<música>__<início>s+<duração>s/`.
+`<pasta>/midi-bakeoff/<música>__<início>s+<duração>s/`. Com `SAVE_STEMS` na
+última célula, os stems de cada separador também são salvos lá, em
+`stems/<separador>/` (WAV ou FLAC de 24 bits, no volume original, de modo que
+somados voltam ao mix). Arquivos que já existem são mantidos, a menos que
+`OVERWRITE` esteja marcado, então dá para salvar os stems depois dos MIDIs.
 
 O MuScriptor precisa de um token do Hugging Face no segredo `HF_TOKEN` do Colab,
 depois de aceitar a licença em
