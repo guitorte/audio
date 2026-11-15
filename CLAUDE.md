@@ -6,7 +6,7 @@ Personal music/audio toolbox. Most of it is **Google Colab notebooks backed by s
 
 | Path | What it is |
 |---|---|
-| `music-to-midi/` | Main song → stems (Demucs) → multi-track MIDI workflow. `modules/` package, `run.py` CLI, `notebooks/Song_to_Stems_to_MIDI.ipynb`. `modules/bakeoff.py` + `notebooks/MIDI_Engine_Bakeoff.ipynb` compare alternative engines on one excerpt (see its section below) |
+| `music-to-midi/` | Main song → stems (Demucs) → multi-track MIDI workflow. `modules/` package, `run.py` CLI, `notebooks/Song_to_Stems_to_MIDI.ipynb`. `modules/bakeoff.py` + `notebooks/MIDI_Engine_Bakeoff.ipynb` compare alternative engines on one excerpt (see its section below). `modules/remi.py` + `notebooks/Assemble_MIDI_to_REMI.ipynb` merge per-stem MIDIs and write MIDI-TEXT v2 |
 | `stem-to-midi/` | Earlier single-stem → MIDI project (Basic Pitch, ADTOF drums), now folded into `music-to-midi/` |
 | `audio-restoration-pipeline/` | DSP restoration and mastering (spectral gating, EQ, harmonic "frequency restoration", LUFS) with `modules/` and several notebook versions |
 | `neural-upscaler/` | Neural restoration of songs in a Google Drive folder. See its section below |
@@ -75,6 +75,15 @@ Song → BS-RoFormer split → convert **only the vocal** with Seed-VC or RVC �
 - Quality without ground truth is proxied: chroma-CENS cosine between the audio and a sine render of the MIDI, drum onset F1 against librosa onsets, and the stem's RMS (Basic Pitch writes notes into near-silent bleed stems). With a reference MIDI, `note_f1` gives real mir_eval note F1.
 - **Stems are kept at true level** so they sum to the excerpt: `separate()` feeds audio-separator the mix at 0.5 peak with `normalization_threshold=1.0` (otherwise it scales loud stems down one by one), divides the stems back and stores them as float WAV, like `upscaler.separate_vocals`. A `.true_level` marker gates reuse of cached stems.
 - Results go to `<Drive folder>/midi-bakeoff/<run tag>/`. `save_outputs()` skips each file that already exists unless `OVERWRITE`, so stems can be added after the MIDIs. `export_stems()` writes `stems/<separator>/<stem>.wav|flac` in 24-bit; if any stem would clip, all of that separator's stems get the same gain cut, so they still sum to the mix.
+
+## music-to-midi assembly + MIDI-TEXT v2
+
+`modules/remi.py` merges per-stem MIDIs into one song and writes it as **MIDI-TEXT v2 (REMI-style)**. That format was defined by the user's standalone "Song → Stems → MIDI v2" notebook, which isn't in this repo; keep the header lines, field order and analysis identical so its `text_to_midi` and the user's existing `.remi.txt` files stay compatible.
+
+- **Picking** (`classify` / `pick`): bake-off names `<separator>__<engine>__<stem>.mid`, plain names whose last word is a stem (incl. Portuguese: `bateria`, `baixo`, `guitarra`, `teclado`, `outros`), and an external `*_vocals.mid` (the vocal lab's), which beats every bake-off vocal. BS-RoFormer SW beats htdemucs_6s; drums follow `DRUMS`. MuScriptor (`mix__…`) and the bake-off's own whole-song files (`A_atual…`, `C_RoFormer_SW…`) are skipped. A single unrecognised `.mid` is treated as an already-assembled song (`convert`, text only).
+- **Two versions of the song:** `assemble()` keeps the transcriptions' own notes and velocities, and the `.remi.txt` is written from it. `playback_mix()` is only for the playable `.mid`: square-lead vocal, `MIX` CC7/pan, flat-velocity tracks set to 100, then `velocity_boost`.
+- **Structure** follows the v2 notebook exactly (librosa beat grid at 22.05 kHz subdivided to 16ths, Krumhansl–Schmuckler key, per-bar triad chords on chroma_cqt). It comes from the song's audio when given, else from a FluidSynth render of the assembled MIDI (sine fallback). The beat tracker gets the MIDI's tempo as `start_bpm` to avoid half/double tempo. Render-based key/chords are fragile: louder drums can change the key.
+- The `.mid` tempo is the vocals file's (the vocal lab writes the detected tempo), else the detected one. Every text written is checked with `check_round_trip()`. Outputs go to `<Drive folder>/midi-montado/<song>/`, existing files kept unless `OVERWRITE`.
 
 ## Dependency pitfalls (already solved; don't regress)
 

@@ -141,6 +141,29 @@ depois de aceitar a licença em
 [MuScriptor/muscriptor-medium](https://huggingface.co/MuScriptor/muscriptor-medium).
 Sem ele, o notebook só pula essa engine.
 
+## Montar as partes e gerar texto REMI (MIDI-TEXT v2)
+
+`notebooks/Assemble_MIDI_to_REMI.ipynb` (lógica em `modules/remi.py`) junta os
+MIDIs de cada parte numa música só e escreve a música no formato **MIDI-TEXT v2
+(REMI-style)**, o mesmo do notebook *Song → Stems → MIDI v2*: tonalidade, tempo
+e acordes no cabeçalho, e uma linha por nota com compasso, posição em 16ª,
+início e duração exatos, nota, MIDI e velocity.
+
+- **Entrada:** uma pasta ou `.zip` no Drive (ou enviado na hora) com os `.mid`
+  do bake-off (`per_stem/`), arquivos com nomes simples (`bass.mid`,
+  `musica_bateria.mid`…) e/ou uma voz `*_vocals.mid` (do Vocal Lab), que tem
+  prioridade. Um MIDI já montado também serve: aí só o texto é gerado.
+- **Saída:** `<pasta>/midi-montado/<música>/` com `<música>.mid` (voz em
+  destaque, volume e pan por faixa), `<música>_instrumental.mid` e os dois
+  `.remi.txt` correspondentes (com as velocities originais).
+- **Áudio opcional:** com o áudio da música, compasso, tempo, tonalidade e
+  acordes vêm dele, como no notebook v2. Sem ele, vêm de um render do MIDI.
+- O texto volta ao MIDI sem perda (`remi.remi_text_to_midi`), e isso é
+  conferido a cada arquivo escrito.
+
+Também roda localmente:
+`python -m modules.remi pasta_ou.zip saida/ --audio musica.flac`.
+
 ## Uso no Colab (recomendado)
 
 Abra `notebooks/Song_to_Stems_to_MIDI.ipynb` (badge no topo do notebook),
@@ -227,8 +250,10 @@ music-to-midi/
 │   ├── batch.py                            # stems → MIDI multi-track
 │   ├── analyze.py                          # piano roll PNG + MIDI-TEXT (+ text_to_midi)
 │   ├── pipeline.py                         # song_to_midi() (cola tudo)
-│   └── bakeoff.py                          # compara engines alternativas num trecho
+│   ├── bakeoff.py                          # compara engines alternativas num trecho
+│   └── remi.py                             # monta as partes + texto MIDI-TEXT v2 (REMI)
 └── notebooks/
     ├── Song_to_Stems_to_MIDI.ipynb         # workflow único (Colab)
-    └── MIDI_Engine_Bakeoff.ipynb           # bake-off de engines (Colab)
+    ├── MIDI_Engine_Bakeoff.ipynb           # bake-off de engines (Colab)
+    └── Assemble_MIDI_to_REMI.ipynb         # monta as partes + texto REMI (Colab)
 ```
