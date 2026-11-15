@@ -140,9 +140,9 @@ def ensure_hf_token() -> bool:
     try:
         from google.colab import userdata
         token = userdata.get("HF_TOKEN")
-    except Exception as e:  # noqa: BLE001  (secret missing, or notebook access not granted)
-        print(f"⚠️ Sem o segredo HF_TOKEN ({type(e).__name__}): o MuScriptor não vai conseguir "
-              "baixar os pesos. Veja o topo do notebook.")
+    except Exception as e:  # noqa: BLE001  (secret missing, access not granted, or a timeout)
+        print(f"⚠️ Não consegui ler o segredo HF_TOKEN ({type(e).__name__}). Vou tentar baixar os "
+              "pesos assim mesmo; se o Hugging Face recusar, veja o topo do notebook.")
         return False
     if token:
         os.environ["HF_TOKEN"] = token
@@ -463,15 +463,77 @@ def adt_str(drum_wav: Path, out_mid: Path, variant: str = "setting-tau-0.8",
 
 # ---- MuScriptor (full mix -> multi-track) ---------------------------------------------------
 
+# MuScriptor's tempo detection (beat_this) downloads this checkpoint from the JKU server on first
+# use, and only from there. When that server fails (HTTP 500 on 2026-11-15) MuScriptor raises
+# instead of falling back, because its best-effort mode only catches BeatDetectionError.
+BEAT_THIS_SHA256 = "8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331"
+BEAT_THIS_SOURCES = (
+    "https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/final0.ckpt",  # official
+    # A community copy, byte-identical to the official file (checked against BEAT_THIS_SHA256).
+    "https://huggingface.co/Audante/beat-this-final0/resolve/main/beat_this-final0.ckpt",
+)
+
+
+def _sha256(path: Path) -> str:
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def ensure_beat_this() -> bool:
+    """Put beat_this's ``final0`` checkpoint in torch's hub cache, where beat_this looks first.
+
+    Tries the official server, then the copy, and keeps a file only if its
+    SHA-256 matches the official one. Returns False if neither source works.
+    """
+    import torch
+    dst = Path(torch.hub.get_dir()) / "checkpoints" / "beat_this-final0.ckpt"
+    if dst.exists() and _sha256(dst) == BEAT_THIS_SHA256:
+        return True
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_suffix(".part")
+    errors = []
+    for url in BEAT_THIS_SOURCES:
+        for attempt in range(2):
+            try:
+                with urllib.request.urlopen(url, timeout=60) as r, open(tmp, "wb") as f:
+                    shutil.copyfileobj(r, f, 1 << 20)
+                if _sha256(tmp) != BEAT_THIS_SHA256:
+                    raise ValueError("checksum diferente do arquivo oficial")
+                tmp.replace(dst)
+                return True
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"{url.split('/')[2]}: {e}")
+                time.sleep(3 * (attempt + 1))
+    tmp.unlink(missing_ok=True)
+    print("⚠️ Não deu para baixar o detector de tempo do MuScriptor (" + "; ".join(errors[-2:]) + ").")
+    return False
+
+
 def muscriptor(mix_wav: Path, out_mid: Path, size: str = "medium", info: dict | None = None,
                detect_tempo: str | bool = "best-effort") -> Path:
+    """Full mix -> multi-track MIDI. Without its beat tracker it still transcribes, just with no tempo grid."""
     from muscriptor import TranscriptionModel
 
+    if detect_tempo is not False and not ensure_beat_this():
+        print("   Transcrevendo sem detecção de tempo: as notas saem iguais, só sem a grade de "
+              "tempo e compassos.")
+        detect_tempo = False
     t0 = time.time()
     model = TranscriptionModel.load_model(size, device=device())
     if info is not None:
         info["load_seconds"] = time.time() - t0
-    midi_bytes, _grid = model.transcribe_and_postprocess(str(mix_wav), detect_tempo=detect_tempo)
+    try:
+        midi_bytes, _grid = model.transcribe_and_postprocess(str(mix_wav), detect_tempo=detect_tempo)
+    except Exception:  # noqa: BLE001
+        if detect_tempo is False or "beat_this" not in traceback.format_exc():
+            raise
+        print(f"⚠️ A detecção de tempo falhou:\n{traceback.format_exc()[-800:]}\n"
+              "   Transcrevendo de novo sem ela.")
+        midi_bytes, _grid = model.transcribe_and_postprocess(str(mix_wav), detect_tempo=False)
     out_mid.write_bytes(midi_bytes)
     del model
     return out_mid
