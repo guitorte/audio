@@ -11,6 +11,7 @@ Personal music/audio toolbox. Most of it is **Google Colab notebooks backed by s
 | `audio-restoration-pipeline/` | DSP restoration and mastering (spectral gating, EQ, harmonic "frequency restoration", LUFS) with `modules/` and several notebook versions |
 | `neural-upscaler/` | Neural restoration of songs in a Google Drive folder. See its section below |
 | `voice-conversion/` | Swap a song's singer with Seed-VC (zero-shot) or RVC via Applio (convert and train). See its section below |
+| `stem-mastering/` | From a song's stems: split the drum stem into kit pieces, reshape each (transient shaper, EQ), humanize a robotic shaker, rebuild and master. CLI scripts, no notebook yet. See its section below |
 | Top-level `*.ipynb` | Older standalone Colab notebooks (stem separator, WAV splitter, song→MIDI, LLM lyrics) |
 | Top-level `*.html` | Self-contained browser MIDI tools (riff/melody generators). Single file each, Tone.js from cdnjs, no build |
 | `upload/`, `images/`, `*.mp3` | User assets. Don't modify, move, or delete them |
@@ -84,6 +85,23 @@ Song → BS-RoFormer split → convert **only the vocal** with Seed-VC or RVC �
 - **Two versions of the song:** `assemble()` keeps the transcriptions' own notes and velocities, and the `.remi.txt` is written from it. `playback_mix()` is only for the playable `.mid`: square-lead vocal, `MIX` CC7/pan, flat-velocity tracks set to 100, then `velocity_boost`.
 - **Structure** follows the v2 notebook exactly (librosa beat grid at 22.05 kHz subdivided to 16ths, Krumhansl–Schmuckler key, per-bar triad chords on chroma_cqt). It comes from the song's audio when given, else from a FluidSynth render of the assembled MIDI (sine fallback). The beat tracker gets the MIDI's tempo as `start_bpm` to avoid half/double tempo. Render-based key/chords are fragile: louder drums can change the key.
 - The `.mid` tempo is the vocals file's (the vocal lab writes the detected tempo), else the detected one. Every text written is checked with `check_round_trip()`. Outputs go to `<Drive folder>/midi-montado/<song>/`, existing files kept unless `OVERWRITE`.
+- **Known issues, not fixed in `remi.py` yet** (worked around by hand in Nov 2026):
+  - `assemble()` keeps Basic Pitch's pitch bends. Basic Pitch writes in-tune notes with a +1/3-semitone bend (the same offset shows up in transcriptions of different songs), and a bend stays on the channel until the next one, so most instrument notes play about 33 cents sharp against the vocal. Strip bends before assembling.
+  - `_VOCAL_FILE` only matches names ending in `_vocals`, so the vocal lab's `*_vocals_dry.mid` loses to the Basic Pitch vocal stem. Rename it or widen the pattern.
+  - When the vocals file carries no tempo, the detected one can lock onto a dotted kick pattern (raio-x: 107.7 instead of ~160 BPM). Check it against the hi-hat spacing.
+
+## stem-mastering
+
+`separate.py` (true-level audio-separator wrapper) → `drums.py` (kit split with MDX23C DrumSep, per-piece chains in `dsp.CHAINS`, optional `--humanize-hh`, rebuild) → `master.py` (fixed chain, target LUFS) → `check.py` (what changed, at equal loudness). `README.md` / `README.pt-BR.md` are the user-facing manuals: keep both in sync. Numbers there come from the raio-x run (Nov 2026).
+
+Invariants to keep:
+- **Everything sums.** Separations run at true level, so the pieces plus the residual (`drum stem − Σ pieces`, left untouched) rebuild the drum stem. Every shaped piece is RMS-matched to its input, so the kit balance doesn't move; only the shape of the hits does.
+- **Peaks are capped against the source**: the drum bus may not exceed the original stem's peak + 1 dB.
+- **The master keeps the arrangement's proportions**: the gain ride (3 s windows, > 0.7 dB) undoes section-level drift caused by EQ. Check it with `check.py` (section balance).
+- **The shaker humanizer finds its grid by phase coherence** around the median onset spacing. The plain median was biased (0.1858 vs 0.1875 s), and counting hit to hit flips every label after one missed onset.
+- **Smoothers start settled** (`dsp.env` takes its initial state from the first sample). Starting from zero faded the file in and looked like 33 dB of limiting.
+- **audio-separator outputs 44.1 kHz.** Resample before mixing with 48 kHz sources.
+- `master.py` with the same input is deterministic, and `drums.py --seed` fixes the humanizer's random offsets. The repo scripts reproduced the delivered raio-x master to −90 dB (24-bit rounding).
 
 ## Dependency pitfalls (already solved; don't regress)
 
@@ -115,4 +133,5 @@ There are no tests and usually no GPU or Hugging Face access in the dev sandbox,
 - **MuScriptor runs offline with random weights:** build `muscriptor.transcription_model._build_model(cpu, _ModelConfig(dim=64, num_heads=2, num_layers=2, card=1395))`, save its `state_dict` as `model.safetensors` with a matching `config.json` (`dim`, `num_heads`, `num_layers`, `card`), and patch `TranscriptionModel.load_model` to load that path. GAME's ONNX zips, ADT_STR's weights and the audio-separator models usually download fine in the sandbox.
 - **Test launchers in Colab's environment:** set `MPLBACKEND=module://matplotlib_inline.backend_inline` and `PYTHONPATH=/env/python` in the parent process.
 - Say plainly which parts were only mock-tested. The first real model run happens in Colab.
+- `stem-mastering` runs fully on CPU in the sandbox (DrumSep ≈10 min, htdemucs_ft ≈13 min for 2.5 min of audio on 2 cores). Pass `--kit` to reuse a split while iterating on the chains.
 - `music-to-midi` can also run locally: `cd music-to-midi && python run.py song.mp3 -o output/`.
