@@ -151,8 +151,15 @@ início e duração exatos, nota, MIDI e velocity.
 
 - **Entrada:** uma pasta ou `.zip` no Drive (ou enviado na hora) com os `.mid`
   do bake-off (`per_stem/`), arquivos com nomes simples (`bass.mid`,
-  `musica_bateria.mid`…) e/ou uma voz `*_vocals.mid` (do Vocal Lab), que tem
-  prioridade. Um MIDI já montado também serve: aí só o texto é gerado.
+  `musica_bateria.mid`…) e/ou uma voz `*_vocals.mid` (do Vocal Lab; também vale
+  com sufixo, como `*_vocals_dry.mid`), que tem prioridade. Um MIDI já montado
+  também serve: aí só o texto é gerado.
+- **Afinação:** os pitch bends do Basic Pitch são descartados na montagem. Ele
+  marca notas afinadas com +1/3 de semitom, e o bend fica valendo no canal até o
+  próximo, então os instrumentos tocavam uns 33 cents acima da voz.
+- **Tempo:** vem do arquivo de voz. Se nenhum arquivo trouxer tempo, a grade do
+  chimbal da bateria orienta a detecção (evita, por exemplo, 107,7 BPM num
+  bumbo pontuado quando a música está em ~160).
 - **Saída:** `<pasta>/midi-montado/<música>/` com `<música>.mid` (voz em
   destaque, volume e pan por faixa), `<música>_instrumental.mid` e os dois
   `.remi.txt` correspondentes (com as velocities originais).

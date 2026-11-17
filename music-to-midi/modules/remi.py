@@ -87,8 +87,9 @@ for _i, _root in enumerate(_PC):
 
 # --------------------------------------------------------------------------- picking files
 
-# An external vocals file is named like "<song>_vocals.mid" ("voz"/"voice" also work).
-_VOCAL_FILE = re.compile(r"(^|[_\s.-])(vocals?|voz|voice)$", re.I)
+# An external vocals file is named like "<song>_vocals.mid" ("voz"/"voice" also work), optionally
+# with a take suffix the vocal lab or the user adds: "<song>_vocals_dry.mid", "<song>_voz_limpa.mid".
+_VOCAL_FILE = re.compile(r"(^|[_\s.-])(vocals?|voz|voice)([_\s.-](dry|wet|clean|seco|seca|limpo|limpa|final|lab))?$", re.I)
 # Plain names: "bass.mid", "<song>_bateria.mid" ... (the last word of the name decides).
 STEM_WORDS = {"vocals": "vocals", "vocal": "vocals", "voz": "vocals", "voice": "vocals",
               "drums": "drums", "drum": "drums", "bateria": "drums",
@@ -211,8 +212,46 @@ def song_tempo(chosen: dict[str, Part]) -> float | None:
     return None
 
 
+HAT_NOTES = {42, 44, 46}   # GM closed / pedal / open hi-hat
+
+
+def drum_tempo_hint(chosen: dict[str, Part]) -> float | None:
+    """A tempo hint from the drum MIDI's hi-hat grid, for when no file carries a tempo.
+
+    The beat tracker's default guess (120 BPM) can lock onto a dotted kick pattern (raio-x: 107.7
+    instead of ~160). The hats usually tick on a steady grid: find its period by phase coherence
+    around the median spacing (the plain median is biased by onset jitter) and read it as 8ths,
+    or as 16ths/quarters when that keeps the tempo within 90-180 BPM.
+    """
+    if "drums" not in chosen:
+        return None
+    import pretty_midi
+    t = np.array(sorted(n.start for i in pretty_midi.PrettyMIDI(str(chosen["drums"].path)).instruments
+                        for n in i.notes if n.pitch in HAT_NOTES))
+    if len(t) < 32:
+        return None
+    ioi = np.diff(t)
+    ioi = ioi[(ioi > 0.06) & (ioi < 0.6)]
+    if len(ioi) < 16:
+        return None
+    med = float(np.median(ioi))
+    cands = np.linspace(0.97 * med, 1.03 * med, 601)
+    step = float(cands[np.argmax([abs(np.exp(2j * np.pi * t / c).mean()) for c in cands])])
+    bpm = 60 / (2 * step)
+    while bpm > 180:
+        bpm /= 2
+    while bpm < 90:
+        bpm *= 2
+    return round(bpm, 2)
+
+
 def assemble(chosen: dict[str, Part], tempo: float):
-    """Merge the picked files into one PrettyMIDI with the transcriptions' own notes and velocities."""
+    """Merge the picked files into one PrettyMIDI with the transcriptions' own notes and velocities.
+
+    Pitch bends are dropped. Basic Pitch writes in-tune notes with a +1/3-semitone bend, and a bend
+    stays on the channel until the next one, so keeping them made most instrument notes play about
+    33 cents sharp against the vocal. The MIDI-TEXT never carried bends, so it doesn't change.
+    """
     import pretty_midi
     pm = pretty_midi.PrettyMIDI(initial_tempo=tempo)
     pm.time_signature_changes.append(pretty_midi.TimeSignature(*ASSUME_TS, 0.0))
@@ -223,9 +262,7 @@ def assemble(chosen: dict[str, Part], tempo: float):
         inst = pretty_midi.Instrument(program=MIX[stem][0], is_drum=stem == "drums", name=stem)
         for i in src.instruments:
             inst.notes.extend(copy.deepcopy(i.notes))
-            inst.pitch_bends.extend(copy.deepcopy(i.pitch_bends))
         inst.notes.sort(key=lambda n: (n.start, n.pitch))
-        inst.pitch_bends.sort(key=lambda b: b.time)
         pm.instruments.append(inst)
     return pm
 
@@ -328,9 +365,14 @@ def render(pm, wav: Path, sr: int = 44100) -> Path:
     return wav
 
 
-def structure_for(pm, audio: str | Path | None = None, work: Path | None = None) -> tuple[dict, str]:
-    """Structure from the song's audio if given, else from a render of ``pm``. Returns it and its source."""
-    hint = float(pm.get_tempo_changes()[1][0]) if len(pm.get_tempo_changes()[1]) else None
+def structure_for(pm, audio: str | Path | None = None, work: Path | None = None,
+                  hint: float | None = None) -> tuple[dict, str]:
+    """Structure from the song's audio if given, else from a render of ``pm``. Returns it and its source.
+
+    ``hint`` guides the beat tracker; by default it's the MIDI's own tempo.
+    """
+    if hint is None:
+        hint = float(pm.get_tempo_changes()[1][0]) if len(pm.get_tempo_changes()[1]) else None
     if audio:
         return analyze_structure(audio, start_bpm=hint), f"áudio ({Path(audio).name})"
     work = Path(work or tempfile.mkdtemp())
@@ -450,10 +492,13 @@ def build(chosen: dict[str, Part], out_dir: Path, song: str, audio: str | Path |
              "remi": out_dir / f"{song}.remi.txt", "instrumental_remi": out_dir / f"{song}_instrumental.remi.txt"}
     todo = {k for k, p in paths.items() if overwrite or not p.exists()}
     tempo = song_tempo(chosen)
-    pm = assemble(chosen, tempo or 120.0)
+    hint = None if tempo else drum_tempo_hint(chosen)
+    if hint:
+        print(f"Nenhum arquivo traz o tempo: a grade do chimbal sugere {hint:.2f} BPM.")
+    pm = assemble(chosen, tempo or hint or 120.0)
     structure, source = None, ""
     if todo & {"remi", "instrumental_remi"} or tempo is None:
-        structure, source = structure_for(pm, audio, work)
+        structure, source = structure_for(pm, audio, work, hint=hint)
         if tempo is None:   # notes are in seconds: re-assembling only changes the tick grid
             tempo = round(structure["tempo"], 2)
             pm = assemble(chosen, tempo)
