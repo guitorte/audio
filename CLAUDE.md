@@ -85,10 +85,10 @@ Song → BS-RoFormer split → convert **only the vocal** with Seed-VC or RVC �
 - **Two versions of the song:** `assemble()` keeps the transcriptions' own notes and velocities, and the `.remi.txt` is written from it. `playback_mix()` is only for the playable `.mid`: square-lead vocal, `MIX` CC7/pan, flat-velocity tracks set to 100, then `velocity_boost`.
 - **Structure** follows the v2 notebook exactly (librosa beat grid at 22.05 kHz subdivided to 16ths, Krumhansl–Schmuckler key, per-bar triad chords on chroma_cqt). It comes from the song's audio when given, else from a FluidSynth render of the assembled MIDI (sine fallback). The beat tracker gets the MIDI's tempo as `start_bpm` to avoid half/double tempo. Render-based key/chords are fragile: louder drums can change the key.
 - The `.mid` tempo is the vocals file's (the vocal lab writes the detected tempo), else the detected one. Every text written is checked with `check_round_trip()`. Outputs go to `<Drive folder>/midi-montado/<song>/`, existing files kept unless `OVERWRITE`.
-- **Known issues, not fixed in `remi.py` yet** (worked around by hand in Nov 2026):
-  - `assemble()` keeps Basic Pitch's pitch bends. Basic Pitch writes in-tune notes with a +1/3-semitone bend (the same offset shows up in transcriptions of different songs), and a bend stays on the channel until the next one, so most instrument notes play about 33 cents sharp against the vocal. Strip bends before assembling.
-  - `_VOCAL_FILE` only matches names ending in `_vocals`, so the vocal lab's `*_vocals_dry.mid` loses to the Basic Pitch vocal stem. Rename it or widen the pattern.
-  - When the vocals file carries no tempo, the detected one can lock onto a dotted kick pattern (raio-x: 107.7 instead of ~160 BPM). Check it against the hi-hat spacing.
+- **Fixed after the qne-maq and raio-x runs (Nov 2026):**
+  - `assemble()` drops pitch bends. Basic Pitch writes in-tune notes with a +1/3-semitone bend (the same offset appears in transcriptions of different songs), and a bend stays on the channel until the next one, so keeping them made most instrument notes play about 33 cents sharp against the vocal.
+  - `_VOCAL_FILE` accepts a take suffix (`_vocals_dry`, `_voz_limpa`, …), so the vocal lab's file still wins over the Basic Pitch vocal stem.
+  - When no file carries a tempo, `drum_tempo_hint()` reads the hi-hat grid (phase coherence around the median spacing) and passes it to the beat tracker, which otherwise starts at 120 and can lock onto a dotted kick (raio-x: 107.7 instead of 161.5).
 
 ## stem-mastering
 
