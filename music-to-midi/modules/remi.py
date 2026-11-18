@@ -352,6 +352,7 @@ def analyze_structure(audio: str | Path, start_bpm: float | None = None) -> dict
 def render(pm, wav: Path, sr: int = 44100) -> Path:
     """FluidSynth render (General MIDI soundfont); a sine render if FluidSynth isn't installed."""
     wav = Path(wav)
+    wav.parent.mkdir(parents=True, exist_ok=True)   # the work folder only exists if something rendered before
     if shutil.which("fluidsynth") and Path(SF2).exists():
         mid = wav.with_suffix(".mid")
         pm.write(str(mid))
