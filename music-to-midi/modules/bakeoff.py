@@ -335,7 +335,12 @@ def _game_load(size: str) -> dict:
 
     available = ort.get_available_providers()
     providers = [p for p in ("CUDAExecutionProvider", "CPUExecutionProvider") if p in available]
-    sessions = {n: ort.InferenceSession(str(root / f"{n}.onnx"), providers=providers)
+    # dur2bd/bd2dur are tiny index helpers. dur2bd always sums over an empty axis here (one duration
+    # per chunk -> no inner boundaries): fine on CPU, but CUDA's ReduceSum rejects a 0-size axis
+    # ("Can't reduce on dim with value of 0"), which killed GAME on the first chunk in Colab.
+    cpu_only = ("dur2bd", "bd2dur")
+    sessions = {n: ort.InferenceSession(str(root / f"{n}.onnx"),
+                                        providers=["CPUExecutionProvider"] if n in cpu_only else providers)
                 for n in ("encoder", "segmenter", "estimator", "dur2bd", "bd2dur")}
     _GAME.clear()
     _GAME.update(size=size, cfg=json.loads((root / "config.json").read_text()),
@@ -399,9 +404,15 @@ def game(vocal_wav: Path, out_mid: Path, size: str = "medium", language: str = "
             if len(piece) > sr * 0.2:
                 chunks.append((off + k / sr, piece))
     inst = pretty_midi.Instrument(program=CATEGORY_PROGRAM["vocals"], name="vocals")
+    failed = 0
     for off, piece in chunks:
-        durs, pres, scores = _game_chunk(g, piece, lang_id, nsteps, seg_threshold, seg_radius,
-                                         est_threshold)
+        try:
+            durs, pres, scores = _game_chunk(g, piece, lang_id, nsteps, seg_threshold, seg_radius,
+                                             est_threshold)
+        except Exception as e:  # one bad chunk shouldn't cost the whole transcription
+            failed += 1
+            print(f"  ⚠️ GAME: trecho em {off:.1f}s ignorado ({type(e).__name__}: {str(e)[-120:]})")
+            continue
         length = len(piece) / sr
         onsets = np.minimum(np.concatenate([[0.0], np.cumsum(durs)[:-1]]), length) + off
         offsets = np.minimum(np.cumsum(durs), length) + off
@@ -409,6 +420,8 @@ def game(vocal_wav: Path, out_mid: Path, size: str = "medium", language: str = "
             if v and of > on:
                 inst.notes.append(pretty_midi.Note(velocity=90, pitch=int(round(float(p))),
                                                    start=float(on), end=float(of)))
+    if failed == len(chunks) and chunks:
+        raise RuntimeError(f"GAME falhou em todos os {failed} trechos")
     pm = pretty_midi.PrettyMIDI()
     pm.instruments.append(inst)
     pm.write(str(out_mid))
